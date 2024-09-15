@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Hugging Face API details for GPT-2
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = "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"  # Replace with your actual key
+HUGGING_FACE_API_KEY = "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"  # Replace with your actual key
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
