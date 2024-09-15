@@ -1,15 +1,14 @@
+import os
 import streamlit as st
-import requests
 import seaborn as sns
 import pandas as pd
+import matplotlib.pyplot as plt
 from PyPDF2 import PdfReader
 from docx import Document
-import matplotlib.pyplot as plt
+from groq import Groq
 
-# Groq API details
-API_URL = "https://api.groq.com/v1/engines/llama-3.1-70b-versatile/completions"
-GROQ_API_KEY = "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"
-headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+# Initialize Groq client
+client = Groq(api_key=os.environ.get("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"))
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
@@ -27,22 +26,13 @@ def extract_doc_text(doc_file):
 
 # Function to query Groq API for LLaMA
 def query_groq_llama(prompt):
-    payload = {
-        "model": "llama-3.1-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 1,
-        "max_tokens": 1024,
-        "top_p": 1,
-        "stream": False,
-        "stop": None
-    }
-    
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        response.raise_for_status()  # Raise an error for bad status codes
-        response_json = response.json()
-        return response_json.get('choices', [{}])[0].get('message', {}).get('content', 'No response content')
-    except requests.exceptions.RequestException as e:
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192"
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
         return f"Error: {str(e)}"
 
 # Function to analyze resume using LLaMA with error handling
@@ -101,7 +91,7 @@ if uploaded_files and job_description:
         st.write(f"**Candidate {idx+1}: {result.file_name}**")
         st.write(f"**Justification:** {result.analysis}")
     
-    # Visualize results with a bar chart
+    # Visualize results with a bar chart using Seaborn
     st.write("Candidate Rankings:")
     plt.figure(figsize=(10, 6))
     sns.barplot(x='score', y='file_name', data=sorted_results.head(5))
