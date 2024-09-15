@@ -1,4 +1,6 @@
-pip install streamlit
-pip install openai
-pip install PyPDF2
-pip install python-docx
+streamlit
+PyPDF2
+python-docx
+transformers
+torch
+requests
