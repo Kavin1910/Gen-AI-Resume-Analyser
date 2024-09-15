@@ -1,10 +1,6 @@
-streamlit
-PyPDF2
-python-docx
-transformers
-torch
-requests
-matplotlib
-seaborn
-groq
-
+echo "streamlit==1.21.0" > requirements.txt
+echo "requests" >> requirements.txt
+echo "PyPDF2" >> requirements.txt
+echo "python-docx" >> requirements.txt
+echo "groq" >> requirements.txt
+echo "seaborn" >> requirements.txt
