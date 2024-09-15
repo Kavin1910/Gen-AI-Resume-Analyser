@@ -2,11 +2,10 @@ import streamlit as st
 import requests
 from PyPDF2 import PdfReader
 from docx import Document
-import os
 
-# Hugging Face API details
-API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure you set this in your environment variables
+# Hugging Face API details for DistilBERT
+API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased"
+HUGGING_FACE_API_KEY = "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"
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -23,24 +22,28 @@ def extract_doc_text(doc_file):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to query Hugging Face API
-def query_huggingface(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()
-
-# Function to analyze resume using Hugging Face API
-def analyze_resume_hf(resume_text, job_description):
-    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, give a score and reasoning."
+# Function to query Hugging Face API for DistilBERT
+def query_huggingface_distilbert(prompt):
     payload = {"inputs": prompt}
-    response = query_huggingface(payload)
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
+
+# Function to analyze resume using DistilBERT
+def analyze_resume_distilbert(resume_text, job_description):
+    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide insights."
+    response = query_huggingface_distilbert(prompt)
     
     if 'error' not in response:
-        return response[0]['generated_text']
+        return response[0].get('generated_text', 'No analysis generated.')
     else:
-        return "Error in generating response from Hugging Face AI."
+        return "Error in generating response from DistilBERT."
 
 # Main Streamlit app
-st.title("Illama HR Resume Analysis Tool (Hugging Face)")
+st.title("Illama HR Resume Analysis Tool (DistilBERT)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
@@ -63,8 +66,8 @@ if uploaded_files and job_description:
             st.write(f"Unsupported file type: {uploaded_file.name}")
             continue
         
-        # Analyze resume using Hugging Face API
-        analysis_result = analyze_resume_hf(resume_text, job_description)
+        # Analyze resume using DistilBERT
+        analysis_result = analyze_resume_distilbert(resume_text, job_description)
         results.append({
             'file_name': uploaded_file.name,
             'analysis': analysis_result
