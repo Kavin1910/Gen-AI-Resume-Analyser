@@ -5,7 +5,7 @@ from docx import Document
 
 # Hugging Face API details for GPT-2
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = "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"
+HUGGING_FACE_API_KEY = "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"  # Replace with your actual key
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -24,9 +24,9 @@ def extract_doc_text(doc_file):
 
 # Function to query Hugging Face API for GPT-2 with input truncation
 def query_huggingface_gpt2(prompt):
-    # Truncate the prompt to a reasonable length to avoid API issues
+    # Truncate the prompt to avoid exceeding token limit
     max_token_length = 1000
-    prompt = prompt[:max_token_length]  # Truncate to avoid exceeding token limit
+    prompt = prompt[:max_token_length]  # Limit the prompt length
     
     payload = {"inputs": prompt}
     try:
