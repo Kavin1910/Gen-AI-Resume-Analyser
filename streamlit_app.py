@@ -1,32 +1,51 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+import re
 from transformers import pipeline
 
 # Initialize Hugging Face text generation pipeline
 generator = pipeline('text-generation', model='gpt-4')
 
-# Function to generate justification
-def generate_justification(resume_text, description):
+# Function to generate justification using GPT-based model
+def generate_gpt_justification(resume_text, description):
     prompt = f"Given the following job description: {description}\nAnd the resume: {resume_text}\n\nProvide a detailed justification of how well the resume fits the job description."
     response = generator(prompt, max_length=300, num_return_sequences=1)
     return response[0]['generated_text']
 
+# Function to generate justification based on keyword matching (as a fallback)
+def generate_keyword_justification(resume_text, description):
+    # Extract key skills or keywords from the job description
+    skills_required = re.findall(r'\b\w+\b', description)
+    
+    # Compare with the resume text
+    skills_matched = [skill for skill in skills_required if skill.lower() in resume_text.lower()]
+    
+    if len(skills_matched) > 0:
+        return f"The resume includes several key skills required for the job, such as {', '.join(skills_matched)}."
+    else:
+        return "The resume does not match the key skills required for the job."
+
 # Placeholder function for resume analysis
-def analyze_resume(resume_text, description):
-    justification = generate_justification(resume_text, description)
-    # Dummy fit score, replace with actual model logic
-    fit_score = 0.8
+def analyze_resume(resume_text, description, use_gpt=True):
+    # Using GPT model for justification if use_gpt is True, otherwise keyword matching
+    if use_gpt:
+        justification = generate_gpt_justification(resume_text, description)
+    else:
+        justification = generate_keyword_justification(resume_text, description)
+    
+    # Placeholder fit score, you can replace this logic with a more advanced model
+    fit_score = 0.8 if use_gpt else 0.5  # Different scores based on the method
     return {
         'fit_score': fit_score,
         'justification': justification
     }
 
 # Function to rank resumes
-def rank_resumes(resume_data, description):
+def rank_resumes(resume_data, description, use_gpt=True):
     results = []
     for index, row in resume_data.iterrows():
-        analysis = analyze_resume(row['resume_text'], description)
+        analysis = analyze_resume(row['resume_text'], description, use_gpt=use_gpt)
         results.append({
             'name': row['name'],
             'fit_score': analysis['fit_score'],
@@ -42,6 +61,9 @@ st.title("Kavin's Find")
 
 # Collect job description
 description = st.text_area("Enter the job description:", "")
+
+# Option to select justification method (GPT vs Keyword Matching)
+use_gpt = st.checkbox("Use GPT for Justification", value=True)
 
 # Upload resumes
 uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", type=["pdf", "docx"], accept_multiple_files=True)
@@ -74,7 +96,7 @@ if uploaded_files:
     if description:
         # Rank resumes
         resume_df = pd.DataFrame(resume_data)
-        ranked_resumes = rank_resumes(resume_df, description)
+        ranked_resumes = rank_resumes(resume_df, description, use_gpt=use_gpt)
         
         # Select number of top candidates
         num_top_candidates = st.selectbox("Select number of top candidates to display:", [5, 10])
