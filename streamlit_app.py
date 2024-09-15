@@ -7,7 +7,7 @@ import pandas as pd
 
 # Hugging Face API details (consider a larger model for better analysis)
 API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
-headers = {"Authorization": f"Bearer {os.getenv('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')}"}
+headers = {"Authorization": f"Bearer {os.getenv('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')}"}
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
