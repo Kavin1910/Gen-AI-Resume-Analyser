@@ -6,7 +6,7 @@ import os
 import pandas as pd
 
 # Hugging Face API details
-API_URL = "https://api-inference.huggingface.co/models/distilgpt2"  # Updated URL for DistilGPT-2
+API_URL = "https://api-inference.huggingface.co/models/distilbert/distilgpt2"  # Updated URL for DistilGPT-2
 HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure this environment variable is set
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
