@@ -5,11 +5,6 @@ from docx import Document
 import os
 import pandas as pd
 
-# Check for Hugging Face API Key (replace with your actual check)
-if not os.getenv("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"):
-    st.error("Missing Hugging Face API Key! Set the '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' environment variable.")
-    exit()
-
 # Hugging Face API details (consider a larger model for better analysis)
 API_URL = "https://api-inference.huggingface.co/models/facebook/bart-base"
 headers = {"Authorization": f"Bearer {os.getenv('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')}"}
@@ -57,4 +52,59 @@ st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the c
 job_description = st.text_area("Enter the job description for the role (e.g., Software Developer):", height=150)
 
 # Uploading resumes
-uploaded_files = st.file_uploader("Upload resumes (PDF or
+uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", accept_multiple_files=True)
+
+if uploaded_files and job_description:
+    st.write("Analyzing resumes...")
+
+    # Store resume analysis results
+    results = []
+    for uploaded_file in uploaded_files:
+        if uploaded_file.name.endswith('.pdf'):
+            resume_text = extract_pdf_text(uploaded_file)
+        elif uploaded_file.name.endswith('.docx'):
+            resume_text = extract_doc_text(uploaded_file)
+        else:
+            st.write(f"Unsupported file type: {uploaded_file.name}")
+            continue
+
+        # Analyze resume using Hugging Face API
+        analysis_result = analyze_resume_hf(resume_text, job_description)
+
+        # Extract score and key skills (optional)
+        try:
+            score = float(analysis_result.split('Score:')[1].split()[0])
+            key_skills = analysis_result.split('Key Skills:')[1].split('\n')[0]  # Extract top skill
+        except:
+            score = 0
+            key_skills = ""
+
+        results.append({
+            'file_name': uploaded_file.name,
+            'analysis': analysis_result,
+            'score': score,
+            'key_skills': key_skills
+        })
+
+    # Sort candidates based on the score
+    sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
+
+    # Display top 5 candidates
+    st.write("**Top Candidates:**")
+
+    for idx, result in enumerate(sorted_results[:5]):
+        st.write(f"**{idx+1}. {result['file_name']} (Score: {result['score']})**")
+        st.write(f"**Justification:** {result['analysis']}")
+        st.write(f"**Key Skills:** {result['key_skills']}")  # Display extracted key skills
+
+    # Prepare data for chart
+    chart_data = {
+        'Candidate': [result['file_name'] for result in sorted_results[:5]],
+        'Score': [result['score'] for result in sorted_results[:5]]
+    }
+
+    df = pd.DataFrame(chart_data)
+
+    # Display results and chart
+    st.write("Candidate Scores:")
+    st.bar_chart(df.set_index('Candidate'))
