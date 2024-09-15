@@ -1,7 +1,6 @@
-echo "streamlit==1.21.0" > requirements.txt
-echo "requests" >> requirements.txt
-echo "PyPDF2" >> requirements.txt
-echo "python-docx" >> requirements.txt
-echo "groq" >> requirements.txt
-echo "seaborn" >> requirements.txt
-echo "python-dotenv" >> requirements.txt
+streamlit==1.21.0
+groq
+seaborn
+PyPDF2
+python-docx
+pandas
