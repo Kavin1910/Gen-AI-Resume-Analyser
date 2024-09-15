@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 from PyPDF2 import PdfReader
 from docx import Document
+import matplotlib.pyplot as plt
 
 # Hugging Face API details for GPT-2
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
@@ -36,6 +37,11 @@ def query_huggingface_gpt2(prompt):
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
+# Function to truncate the generated text to 50 words
+def truncate_to_50_words(text):
+    words = text.split()
+    return ' '.join(words[:50]) + ('...' if len(words) > 50 else '')
+
 # Function to analyze resume using GPT-2 with error handling
 def analyze_resume_gpt2(resume_text, job_description):
     prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification."
@@ -43,14 +49,15 @@ def analyze_resume_gpt2(resume_text, job_description):
     
     if 'error' not in response:
         if isinstance(response, list) and len(response) > 0:
-            return response[0].get('generated_text', 'No analysis generated.')
+            generated_text = response[0].get('generated_text', 'No analysis generated.')
+            return truncate_to_50_words(generated_text)  # Limit to 50 words
         else:
             return "Unexpected response format from GPT-2."
     else:
         return f"Error: {response['error']}"
 
 # Main Streamlit app
-st.title("Illama HR Resume Analysis Tool (GPT-2)")
+st.title("Kavin's Application Resume Analysis(GPT-2)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
@@ -75,16 +82,31 @@ if uploaded_files and job_description:
         
         # Analyze resume using GPT-2
         analysis_result = analyze_resume_gpt2(resume_text, job_description)
+        score = len(analysis_result.split())  # Score based on the word count of analysis
         results.append({
             'file_name': uploaded_file.name,
-            'analysis': analysis_result
+            'analysis': analysis_result,
+            'score': score
         })
     
-    # Sort candidates based on the analysis (Here, it's a placeholder to sort by length of response)
-    sorted_results = sorted(results, key=lambda x: len(x['analysis']), reverse=True)
+    # Sort candidates based on the score (longer justification gets higher score)
+    sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
 
     # Display top 5 candidates
     st.write("Top 5 candidates:")
     for idx, result in enumerate(sorted_results[:5]):
         st.write(f"**Candidate {idx+1}: {result['file_name']}**")
-        st.write(f"**Justification:** {result['analysis']}")
+        st.write(f"**Justification (50 words):** {result['analysis']}")
+    
+    # Display a bar chart for the top candidates
+    top_5 = sorted_results[:5]
+    candidate_names = [res['file_name'] for res in top_5]
+    candidate_scores = [res['score'] for res in top_5]
+    
+    # Plotting the bar chart
+    fig, ax = plt.subplots()
+    ax.barh(candidate_names, candidate_scores, color='skyblue')
+    ax.set_xlabel('Score (Based on Justification Length)')
+    ax.set_title('Top 5 Candidates Based on Resume Analysis')
+    ax.invert_yaxis()  # Invert y-axis to show highest score at the top
+    st.pyplot(fig)
