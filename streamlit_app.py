@@ -9,41 +9,6 @@ import matplotlib.pyplot as plt
 import io
 from transformers import pipeline
 
-# Function to extract text from PDF
-def extract_text_from_pdf(file):
-    pdf_reader = PdfReader(file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text
-
-# Function to extract text from Word documents
-def extract_text_from_docx(file):
-    doc = Document(file)
-    text = ""
-    for para in doc.paragraphs:
-        text += para.text
-    return text
-
-# Function to preprocess text
-def preprocess_text(text):
-    return text.lower().replace('\n', ' ')
-
-# Function to compute relevance score
-def compute_relevance_score(resumes, job_description):
-    vectorizer = TfidfVectorizer()
-    documents = resumes + [job_description]
-    tfidf_matrix = vectorizer.fit_transform(documents)
-    cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-    return cosine_sim.flatten()
-
-# Function to rank candidates and justify selections
-def rank_candidates(resumes, job_description):
-    scores = compute_relevance_score(resumes, job_description)
-    ranked_indices = np.argsort(scores)[::-1]
-    return ranked_indices, scores
-
-# Streamlit application
 def main():
     st.title("Kavin's AI Resume Analyser")
 
@@ -91,21 +56,28 @@ def main():
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
-                nlp = pipeline("text-generation", model="gpt-3.5-turbo")  # Specify the model you are using
-                justification_input = (f"Justify why these candidates are ranked high based on their resumes and job description:\n"
-                                       f"Job Description: {job_description}\n"
-                                       f"Resumes: {' | '.join(resumes[ranked_indices[i]][:500] for i in range(min(num_candidates, len(ranked_indices))))}")
-                try:
-                    justification = nlp(justification_input, max_length=500, truncation=True)
-                    st.write(justification[0]['generated_text'])
-                except ValueError as e:
-                    st.error(f"Error generating text: {e}")
+                nlp = get_text_generator()
+                if nlp:
+                    justification_input = (
+                        f"Justify why these candidates are ranked high based on their resumes and job description:\n"
+                        f"Job Description: {job_description}\n"
+                        f"Resumes: {' | '.join(resumes[ranked_indices[i]][:500] for i in range(min(num_candidates, len(ranked_indices))))}"
+                    )
+                    try:
+                        justification = nlp(justification_input, max_length=500, truncation=True)
+                        st.write(justification[0]['generated_text'])
+                    except Exception as e:
+                        st.error(f"Error generating text: {e}")
             else:
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
     else:
         st.write("Please upload a job description.")
+
+if __name__ == "__main__":
+    main()
+
 
 if __name__ == "__main__":
     main()
