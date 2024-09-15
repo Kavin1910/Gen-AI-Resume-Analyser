@@ -5,7 +5,7 @@ from docx import Document
 
 # Hugging Face API details for GPT-2
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = "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"
+HUGGING_FACE_API_KEY = "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"
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -22,17 +22,21 @@ def extract_doc_text(doc_file):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to query Hugging Face API for GPT-2
+# Function to query Hugging Face API for GPT-2 with input truncation
 def query_huggingface_gpt2(prompt):
+    # Truncate the prompt to a reasonable length to avoid API issues
+    max_token_length = 1000
+    prompt = prompt[:max_token_length]  # Truncate to avoid exceeding token limit
+    
     payload = {"inputs": prompt}
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
-        response.raise_for_status()
+        response.raise_for_status()  # Raise an error for bad status codes
         return response.json()
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
-# Function to analyze resume using GPT-2
+# Function to analyze resume using GPT-2 with error handling
 def analyze_resume_gpt2(resume_text, job_description):
     prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification."
     response = query_huggingface_gpt2(prompt)
