@@ -1,14 +1,15 @@
 import streamlit as st
 import requests
+import seaborn as sns
+import pandas as pd
 from PyPDF2 import PdfReader
 from docx import Document
 import matplotlib.pyplot as plt
-import time
 
-# Hugging Face API details for GPT-2
-API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = "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"  # Replace with your actual key
-headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
+# Groq API details
+API_URL = "https://api.groq.com/v1/engines/llama-3.1-70b-versatile/completions"
+GROQ_API_KEY = "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"
+headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
@@ -24,52 +25,44 @@ def extract_doc_text(doc_file):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to query Hugging Face API for GPT-2 with input truncation
-def query_huggingface_gpt2(prompt):
-    max_token_length = 1000
-    prompt = prompt[:max_token_length]  # Limit the prompt length
+# Function to query Groq API for LLaMA
+def query_groq_llama(prompt):
+    payload = {
+        "model": "llama-3.1-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 1,
+        "max_tokens": 1024,
+        "top_p": 1,
+        "stream": False,
+        "stop": None
+    }
     
-    payload = {"inputs": prompt}
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
-        if response.status_code == 429:  # Handle rate limit error
-            raise requests.exceptions.HTTPError("Too Many Requests")
         response.raise_for_status()  # Raise an error for bad status codes
-        return response.json()
+        response_json = response.json()
+        return response_json.get('choices', [{}])[0].get('message', {}).get('content', 'No response content')
     except requests.exceptions.RequestException as e:
-        return {"error": str(e)}
+        return f"Error: {str(e)}"
 
-# Function to truncate the generated text to 50 words
-def truncate_to_50_words(text):
-    words = text.split()
-    return ' '.join(words[:50]) + ('...' if len(words) > 50 else '')
-
-# Function to analyze resume using GPT-2 with error handling
-def analyze_resume_gpt2(resume_text, job_description):
-    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification."
-    retry_count = 3
-    while retry_count > 0:
-        response = query_huggingface_gpt2(prompt)
-        if 'error' not in response:
-            if isinstance(response, list) and len(response) > 0:
-                generated_text = response[0].get('generated_text', 'No analysis generated.')
-                return truncate_to_50_words(generated_text)
-            else:
-                return "Unexpected response format from GPT-2."
-        else:
-            if "Too Many Requests" in response['error']:
-                retry_count -= 1
-                time.sleep(10)  # Wait before retrying
-            else:
-                return f"Error: {response['error']}"
-    return "Failed to generate analysis after multiple retries."
+# Function to analyze resume using LLaMA with error handling
+def analyze_resume_llama(resume_text, job_description):
+    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification in 50 words."
+    analysis_result = query_groq_llama(prompt)
+    
+    # Truncate result to 50 words
+    analysis_words = analysis_result.split()
+    if len(analysis_words) > 50:
+        analysis_result = ' '.join(analysis_words[:50]) + '...'
+    
+    return analysis_result
 
 # Main Streamlit app
-st.title("Kavin's Application Resume Analysis (GPT-2)")
+st.title("Kavin's Application Resume Analysis (LLaMA)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
-job_description = st.text_area("Enter the job description for the role (e.g., HR Manager):", height=150)
+job_description = st.text_area("Enter the job description for the role (e.g., Human Resources Manager):", height=150)
 
 # Uploading resumes
 uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", accept_multiple_files=True)
@@ -88,33 +81,31 @@ if uploaded_files and job_description:
             st.write(f"Unsupported file type: {uploaded_file.name}")
             continue
         
-        # Analyze resume using GPT-2
-        analysis_result = analyze_resume_gpt2(resume_text, job_description)
-        score = len(analysis_result.split())  # Score based on the word count of analysis
+        # Analyze resume using LLaMA
+        analysis_result = analyze_resume_llama(resume_text, job_description)
         results.append({
             'file_name': uploaded_file.name,
             'analysis': analysis_result,
-            'score': score
+            'score': len(analysis_result)  # Example scoring based on length of justification
         })
     
-    # Sort candidates based on the score (longer justification gets higher score)
-    sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
-
+    # Create DataFrame for visualization
+    df_results = pd.DataFrame(results)
+    
+    # Sort candidates based on the score
+    sorted_results = df_results.sort_values(by='score', ascending=False)
+    
     # Display top 5 candidates
     st.write("Top 5 candidates:")
-    for idx, result in enumerate(sorted_results[:5]):
-        st.write(f"**Candidate {idx+1}: {result['file_name']}**")
-        st.write(f"**Justification (50 words):** {result['analysis']}")
+    for idx, result in enumerate(sorted_results.head(5).itertuples()):
+        st.write(f"**Candidate {idx+1}: {result.file_name}**")
+        st.write(f"**Justification:** {result.analysis}")
     
-    # Display a bar chart for the top candidates
-    top_5 = sorted_results[:5]
-    candidate_names = [res['file_name'] for res in top_5]
-    candidate_scores = [res['score'] for res in top_5]
-    
-    # Plotting the bar chart
-    fig, ax = plt.subplots()
-    ax.barh(candidate_names, candidate_scores, color='skyblue')
-    ax.set_xlabel('Score (Based on Justification Length)')
-    ax.set_title('Top 5 Candidates Based on Resume Analysis')
-    ax.invert_yaxis()  # Invert y-axis to show highest score at the top
-    st.pyplot(fig)
+    # Visualize results with a bar chart
+    st.write("Candidate Rankings:")
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x='score', y='file_name', data=sorted_results.head(5))
+    plt.xlabel('Score')
+    plt.ylabel('Candidate')
+    plt.title('Top 5 Candidates by Score')
+    st.pyplot()
