@@ -1,106 +1,105 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
-from transformers import pipeline
-import fitz  # PyMuPDF
+import numpy as np
+from PyPDF2 import PdfReader
 from docx import Document
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
+import io
+from transformers import pipeline
 
-# Initialize Hugging Face text generation pipeline
-generator = pipeline('text-generation', model='gpt-4')
+# Function to extract text from PDF
+def extract_text_from_pdf(file):
+    pdf_reader = PdfReader(file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    return text
 
-# Function to generate justification using GPT-based model
-def generate_gpt_justification(resume_text, description):
-    prompt = f"Given the following job description: {description}\nAnd the resume: {resume_text}\n\nProvide a detailed justification of how well the resume fits the job description."
-    response = generator(prompt, max_length=300, num_return_sequences=1)
-    return response[0]['generated_text']
+# Function to extract text from Word documents
+def extract_text_from_docx(file):
+    doc = Document(file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text
+    return text
 
-# Function to generate justification based on keyword matching (as a fallback)
-def generate_keyword_justification(resume_text, description):
-    # Extract key skills or keywords from the job description
-    skills_required = set(description.lower().split())  # Faster than regex
-    resume_words = set(resume_text.lower().split())
-    skills_matched = skills_required.intersection(resume_words)
+# Function to preprocess text
+def preprocess_text(text):
+    return text.lower().replace('\n', ' ')
+
+# Function to compute relevance score
+def compute_relevance_score(resumes, job_description):
+    vectorizer = TfidfVectorizer()
+    documents = resumes + [job_description]
+    tfidf_matrix = vectorizer.fit_transform(documents)
+    cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
+    return cosine_sim.flatten()
+
+# Function to rank candidates and justify selections
+def rank_candidates(resumes, job_description):
+    scores = compute_relevance_score(resumes, job_description)
+    ranked_indices = np.argsort(scores)[::-1]
+    return ranked_indices, scores
+
+# Streamlit application
+def main():
+    st.title("AI Resume Analyzer and Ranking")
     
-    if skills_matched:
-        return f"The resume includes several key skills required for the job, such as {', '.join(skills_matched)}."
+    # Upload job description
+    job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
+    if job_description_file:
+        job_description = job_description_file.read().decode("utf-8")
+        job_description = preprocess_text(job_description)
+        
+        # Upload resumes
+        resume_files = st.file_uploader("Upload Resumes (PDF/Word)", type=["pdf", "docx"], accept_multiple_files=True)
+        
+        if resume_files:
+            resumes = []
+            for file in resume_files:
+                if file.type == "application/pdf":
+                    resumes.append(preprocess_text(extract_text_from_pdf(file)))
+                elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    resumes.append(preprocess_text(extract_text_from_docx(file)))
+            
+            if resumes:
+                # Rank candidates
+                ranked_indices, scores = rank_candidates(resumes, job_description)
+                
+                # Options to select top-N candidates
+                num_candidates = st.selectbox("Select number of top candidates to display", [1, 5, 10, 15, 20])
+                
+                # Display results
+                st.write(f"Top {num_candidates} Candidates:")
+                for i in range(min(num_candidates, len(ranked_indices))):
+                    st.write(f"**Candidate {i+1}**:")
+                    st.write(f"Score: {scores[ranked_indices[i]]:.2f}")
+                    
+                    # Display resume snippet
+                    st.text_area("Resume Snippet", resumes[ranked_indices[i]][:1000], height=200)
+                
+                # Generate and display charts
+                fig, ax = plt.subplots()
+                ax.bar(range(len(scores)), scores[ranked_indices], color='blue')
+                ax.set_xlabel('Candidates')
+                ax.set_ylabel('Scores')
+                ax.set_title('Resume Scores')
+                plt.xticks(range(len(scores)), [f"Candidate {i+1}" for i in ranked_indices])
+                st.pyplot(fig)
+                
+                # Generate assessment justification
+                st.write("Assessment Justification:")
+                nlp = pipeline("text-generation")
+                justification = nlp(f"Justify why these candidates are ranked high based on their resumes and job description:\nJob Description: {job_description}\nResumes: {resumes[ranked_indices[0]][:500]}...") # Simplified justification
+                st.write(justification[0]['generated_text'])
+            else:
+                st.write("No resumes uploaded.")
+        else:
+            st.write("Please upload resumes.")
     else:
-        return "The resume does not match the key skills required for the job."
+        st.write("Please upload a job description.")
 
-# Placeholder function for resume analysis
-def analyze_resume(resume_text, description, use_gpt=True):
-    if use_gpt:
-        justification = generate_gpt_justification(resume_text, description)
-    else:
-        justification = generate_keyword_justification(resume_text, description)
-    
-    fit_score = 0.8 if use_gpt else 0.5  # Placeholder for fit score logic
-    return {
-        'fit_score': fit_score,
-        'justification': justification
-    }
-
-# Function to rank resumes
-def rank_resumes(resume_data, description, use_gpt=True):
-    results = []
-    for _, row in resume_data.iterrows():
-        analysis = analyze_resume(row['resume_text'], description, use_gpt=use_gpt)
-        results.append({
-            'name': row['name'],
-            'fit_score': analysis['fit_score'],
-            'justification': analysis['justification']
-        })
-    
-    return pd.DataFrame(results).sort_values(by='fit_score', ascending=False).reset_index(drop=True)
-
-# Streamlit UI
-st.title("Kavin's Find")
-
-# Collect job description
-description = st.text_area("Enter the job description:", "")
-
-# Option to select justification method (GPT vs Keyword Matching)
-use_gpt = st.checkbox("Use GPT for Justification", value=True)
-
-# Upload resumes
-uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", type=["pdf", "docx"], accept_multiple_files=True)
-
-if uploaded_files:
-    # Convert uploaded files to text
-    resume_data = []
-    for uploaded_file in uploaded_files:
-        file_name = uploaded_file.name
-        file_type = uploaded_file.type
-        file_content = uploaded_file.read()
-        
-        # Extract text from the uploaded file
-        resume_text = ""
-        if file_type == "application/pdf":
-            pdf_document = fitz.open(stream=file_content, filetype="pdf")
-            resume_text = " ".join([page.get_text() for page in pdf_document])
-            pdf_document.close()
-        elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = Document(BytesIO(file_content))
-            resume_text = "\n".join([para.text for para in doc.paragraphs])
-        
-        resume_data.append({'name': file_name, 'resume_text': resume_text})
-    
-    if description:
-        # Rank resumes
-        resume_df = pd.DataFrame(resume_data)
-        ranked_resumes = rank_resumes(resume_df, description, use_gpt=use_gpt)
-        
-        # Select number of top candidates
-        num_top_candidates = st.selectbox("Select number of top candidates to display:", [5, 10])
-        top_candidates = ranked_resumes.head(num_top_candidates)
-        
-        st.write("### Top Candidates")
-        st.dataframe(top_candidates[['name', 'fit_score', 'justification']])
-        
-        st.write("### Detailed Justifications")
-        for _, row in top_candidates.iterrows():
-            st.write(f"**{row['name']}**")
-            st.write(f"Fit Score: {row['fit_score']:.2f}")
-            st.write(f"Justification: {row['justification']}")
-            st.write("---")
-else:
-    st.write("Please upload resumes to start analysis.")
+if __name__ == "__main__":
+    main()
