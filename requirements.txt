@@ -5,4 +5,6 @@ transformers
 torch
 requests
 matplotlib
+seaborn
+groq
 
