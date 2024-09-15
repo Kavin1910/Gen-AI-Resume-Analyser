@@ -4,3 +4,5 @@ python-docx
 transformers
 torch
 requests
+matplotlib
+
