@@ -91,9 +91,15 @@ def main():
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
-                nlp = pipeline("text-generation")
-                justification = nlp(f"Justify why these candidates are ranked high based on their resumes and job description:\nJob Description: {job_description}\nResumes: {resumes[ranked_indices[0]][:500]}...") # Simplified justification
-                st.write(justification[0]['generated_text'])
+                nlp = pipeline("text-generation", model="gpt-3.5-turbo")  # Specify the model you are using
+                justification_input = (f"Justify why these candidates are ranked high based on their resumes and job description:\n"
+                                       f"Job Description: {job_description}\n"
+                                       f"Resumes: {' | '.join(resumes[ranked_indices[i]][:500] for i in range(min(num_candidates, len(ranked_indices))))}")
+                try:
+                    justification = nlp(justification_input, max_length=500, truncation=True)
+                    st.write(justification[0]['generated_text'])
+                except ValueError as e:
+                    st.error(f"Error generating text: {e}")
             else:
                 st.write("No resumes uploaded.")
         else:
