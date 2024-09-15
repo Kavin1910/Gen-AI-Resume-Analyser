@@ -45,7 +45,7 @@ def rank_candidates(resumes, job_description):
 
 # Streamlit application
 def main():
-    st.title("AI Resume Analyzer and Ranking")
+    st.title("Kavin's AI Resume Analyser")
     
     # Upload job description
     job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
