@@ -9,41 +9,6 @@ import matplotlib.pyplot as plt
 import io
 from transformers import pipeline
 
-# Function to extract text from PDF
-def extract_text_from_pdf(file):
-    pdf_reader = PdfReader(file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text
-
-# Function to extract text from Word documents
-def extract_text_from_docx(file):
-    doc = Document(file)
-    text = ""
-    for para in doc.paragraphs:
-        text += para.text
-    return text
-
-# Function to preprocess text
-def preprocess_text(text):
-    return text.lower().replace('\n', ' ')
-
-# Function to compute relevance score
-def compute_relevance_score(resumes, job_description):
-    vectorizer = TfidfVectorizer()
-    documents = resumes + [job_description]
-    tfidf_matrix = vectorizer.fit_transform(documents)
-    cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-    return cosine_sim.flatten()
-
-# Function to rank candidates and justify selections
-def rank_candidates(resumes, job_description):
-    scores = compute_relevance_score(resumes, job_description)
-    ranked_indices = np.argsort(scores)[::-1]
-    return ranked_indices, scores
-
-# Streamlit application
 def main():
     st.title("AI Resume Analyzer and Ranking")
     
@@ -92,9 +57,12 @@ def main():
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
-                nlp = pipeline("text-generation", model="gpt-3.5-turbo")  # Specify the model you are using
-                justification = nlp(f"Reason' high ranking based on their resumes and job description:\nJob Description: {job_description}\nResumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}")  # Justification for top-N candidates
-                st.write(justification[0]['generated_text'])
+                try:
+                    nlp = pipeline("text-generation", model="gpt2")  # Updated model name
+                    justification = nlp(f"Reason for high ranking based on their resumes and job description:\nJob Description: {job_description}\nResumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}")  # Justification for top-N candidates
+                    st.write(justification[0]['generated_text'])
+                except Exception as e:
+                    st.error(f"Error generating justification: {e}")
             else:
                 st.write("No resumes uploaded.")
         else:
@@ -102,5 +70,3 @@ def main():
     else:
         st.write("Please upload a job description.")
 
-if __name__ == "__main__":
-    main()
