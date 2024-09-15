@@ -4,3 +4,4 @@ echo "PyPDF2" >> requirements.txt
 echo "python-docx" >> requirements.txt
 echo "groq" >> requirements.txt
 echo "seaborn" >> requirements.txt
+echo "python-dotenv" >> requirements.txt
