@@ -3,6 +3,7 @@ import requests
 from PyPDF2 import PdfReader
 from docx import Document
 import matplotlib.pyplot as plt
+import time
 
 # Hugging Face API details for GPT-2
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
@@ -25,13 +26,14 @@ def extract_doc_text(doc_file):
 
 # Function to query Hugging Face API for GPT-2 with input truncation
 def query_huggingface_gpt2(prompt):
-    # Truncate the prompt to avoid exceeding token limit
     max_token_length = 1000
     prompt = prompt[:max_token_length]  # Limit the prompt length
     
     payload = {"inputs": prompt}
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
+        if response.status_code == 429:  # Handle rate limit error
+            raise requests.exceptions.HTTPError("Too Many Requests")
         response.raise_for_status()  # Raise an error for bad status codes
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -45,23 +47,29 @@ def truncate_to_50_words(text):
 # Function to analyze resume using GPT-2 with error handling
 def analyze_resume_gpt2(resume_text, job_description):
     prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification."
-    response = query_huggingface_gpt2(prompt)
-    
-    if 'error' not in response:
-        if isinstance(response, list) and len(response) > 0:
-            generated_text = response[0].get('generated_text', 'No analysis generated.')
-            return truncate_to_50_words(generated_text)  # Limit to 50 words
+    retry_count = 3
+    while retry_count > 0:
+        response = query_huggingface_gpt2(prompt)
+        if 'error' not in response:
+            if isinstance(response, list) and len(response) > 0:
+                generated_text = response[0].get('generated_text', 'No analysis generated.')
+                return truncate_to_50_words(generated_text)
+            else:
+                return "Unexpected response format from GPT-2."
         else:
-            return "Unexpected response format from GPT-2."
-    else:
-        return f"Error: {response['error']}"
+            if "Too Many Requests" in response['error']:
+                retry_count -= 1
+                time.sleep(10)  # Wait before retrying
+            else:
+                return f"Error: {response['error']}"
+    return "Failed to generate analysis after multiple retries."
 
 # Main Streamlit app
-st.title("Kavin's Application Resume Analysis(GPT-2)")
+st.title("Kavin's Application Resume Analysis (GPT-2)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
-job_description = st.text_area("Enter the job description for the role (e.g., Software Developer):", height=150)
+job_description = st.text_area("Enter the job description for the role (e.g., HR Manager):", height=150)
 
 # Uploading resumes
 uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", accept_multiple_files=True)
