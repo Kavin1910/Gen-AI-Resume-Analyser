@@ -3,10 +3,11 @@ import requests
 from PyPDF2 import PdfReader
 from docx import Document
 import os
+import pandas as pd
 
 # Hugging Face API details
-API_URL = "https://api-inference.huggingface.co/models/gpt2"  # Replace with your desired Hugging Face model
-HUGGING_FACE_API_KEY = os.getenv("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")  # Make sure this environment variable is set
+API_URL = "https://api-inference.huggingface.co/models/distilgpt2"  # Updated URL for DistilGPT-2
+HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure this environment variable is set
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -34,7 +35,7 @@ def query_huggingface(payload):
 
 # Function to analyze resume using Hugging Face API
 def analyze_resume_hf(resume_text, job_description):
-    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, give a score and reasoning."
+    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed score (0-100) and reasoning for why this candidate is a good fit or not for the role."
     payload = {"inputs": prompt}
     response = query_huggingface(payload)
     
@@ -69,16 +70,37 @@ if uploaded_files and job_description:
         
         # Analyze resume using Hugging Face API
         analysis_result = analyze_resume_hf(resume_text, job_description)
+        
+        # Extract score from analysis_result
+        try:
+            score = float(analysis_result.split('Score:')[1].split()[0])
+        except:
+            score = 0  # Default to 0 if score extraction fails
+
         results.append({
             'file_name': uploaded_file.name,
-            'analysis': analysis_result
+            'analysis': analysis_result,
+            'score': score
         })
     
-    # Sort candidates based on the analysis (Placeholder sorting)
-    sorted_results = sorted(results, key=lambda x: len(x['analysis']), reverse=True)
+    # Sort candidates based on the score
+    sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
 
     # Display top 5 candidates
     st.write("Top 5 candidates:")
+    
+    # Prepare data for chart
+    chart_data = {
+        'Candidate': [result['file_name'] for result in sorted_results[:5]],
+        'Score': [result['score'] for result in sorted_results[:5]]
+    }
+    
+    df = pd.DataFrame(chart_data)
+    
+    # Display results and chart
     for idx, result in enumerate(sorted_results[:5]):
         st.write(f"**Candidate {idx+1}: {result['file_name']}**")
         st.write(f"**Justification:** {result['analysis']}")
+    
+    st.write("Candidate Scores:")
+    st.bar_chart(df.set_index('Candidate'))
