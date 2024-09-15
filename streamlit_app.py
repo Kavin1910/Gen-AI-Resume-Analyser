@@ -6,7 +6,7 @@ import os
 import pandas as pd
 
 # Hugging Face API details
-API_URL = "https://api-inference.huggingface.co/models/distilbert/distilgpt2"  # Updated URL for DistilGPT-2
+API_URL = "https://api-inference.huggingface.co/models/distilgpt2"  # Correct URL for DistilGPT-2
 HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure this environment variable is set
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
@@ -31,6 +31,7 @@ def query_huggingface(payload):
         response.raise_for_status()  # Check for HTTP errors
         return response.json()
     except requests.exceptions.RequestException as e:
+        st.error(f"Request failed: {e}")
         return {"error": str(e)}
 
 # Function to analyze resume using Hugging Face API
@@ -73,8 +74,11 @@ if uploaded_files and job_description:
         
         # Extract score from analysis_result
         try:
-            score = float(analysis_result.split('Score:')[1].split()[0])
-        except:
+            # Improved extraction of score
+            score_line = [line for line in analysis_result.split('\n') if 'Score' in line]
+            score = float(score_line[0].split(':')[1].strip()) if score_line else 0
+        except Exception as e:
+            st.error(f"Error parsing score: {e}")
             score = 0  # Default to 0 if score extraction fails
 
         results.append({
