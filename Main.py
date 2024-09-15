@@ -3,9 +3,9 @@ import requests
 from PyPDF2 import PdfReader
 from docx import Document
 
-# Hugging Face API details for DistilBERT
-API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased"
-HUGGING_FACE_API_KEY = "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"
+# Hugging Face API details for GPT-2
+API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
+HUGGING_FACE_API_KEY = "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"
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -22,8 +22,8 @@ def extract_doc_text(doc_file):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to query Hugging Face API for DistilBERT
-def query_huggingface_distilbert(prompt):
+# Function to query Hugging Face API for GPT-2
+def query_huggingface_gpt2(prompt):
     payload = {"inputs": prompt}
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
@@ -32,18 +32,21 @@ def query_huggingface_distilbert(prompt):
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
-# Function to analyze resume using DistilBERT
-def analyze_resume_distilbert(resume_text, job_description):
-    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide insights."
-    response = query_huggingface_distilbert(prompt)
+# Function to analyze resume using GPT-2
+def analyze_resume_gpt2(resume_text, job_description):
+    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification."
+    response = query_huggingface_gpt2(prompt)
     
     if 'error' not in response:
-        return response[0].get('generated_text', 'No analysis generated.')
+        if isinstance(response, list) and len(response) > 0:
+            return response[0].get('generated_text', 'No analysis generated.')
+        else:
+            return "Unexpected response format from GPT-2."
     else:
-        return "Error in generating response from DistilBERT."
+        return f"Error: {response['error']}"
 
 # Main Streamlit app
-st.title("Illama HR Resume Analysis Tool (DistilBERT)")
+st.title("Illama HR Resume Analysis Tool (GPT-2)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
@@ -66,8 +69,8 @@ if uploaded_files and job_description:
             st.write(f"Unsupported file type: {uploaded_file.name}")
             continue
         
-        # Analyze resume using DistilBERT
-        analysis_result = analyze_resume_distilbert(resume_text, job_description)
+        # Analyze resume using GPT-2
+        analysis_result = analyze_resume_gpt2(resume_text, job_description)
         results.append({
             'file_name': uploaded_file.name,
             'analysis': analysis_result
