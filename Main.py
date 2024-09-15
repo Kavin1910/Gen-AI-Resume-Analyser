@@ -6,7 +6,7 @@ import os
 
 # Hugging Face API details
 API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"
-HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure you set this in your environment variables
+HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure you set this in your environment variables
 headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
@@ -78,4 +78,3 @@ if uploaded_files and job_description:
     for idx, result in enumerate(sorted_results[:5]):
         st.write(f"**Candidate {idx+1}: {result['file_name']}**")
         st.write(f"**Justification:** {result['analysis']}")
-
