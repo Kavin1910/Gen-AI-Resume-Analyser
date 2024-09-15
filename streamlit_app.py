@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-import re
 from transformers import pipeline
+import fitz  # PyMuPDF
+from docx import Document
 
 # Initialize Hugging Face text generation pipeline
 generator = pipeline('text-generation', model='gpt-4')
@@ -16,26 +17,23 @@ def generate_gpt_justification(resume_text, description):
 # Function to generate justification based on keyword matching (as a fallback)
 def generate_keyword_justification(resume_text, description):
     # Extract key skills or keywords from the job description
-    skills_required = re.findall(r'\b\w+\b', description)
+    skills_required = set(description.lower().split())  # Faster than regex
+    resume_words = set(resume_text.lower().split())
+    skills_matched = skills_required.intersection(resume_words)
     
-    # Compare with the resume text
-    skills_matched = [skill for skill in skills_required if skill.lower() in resume_text.lower()]
-    
-    if len(skills_matched) > 0:
+    if skills_matched:
         return f"The resume includes several key skills required for the job, such as {', '.join(skills_matched)}."
     else:
         return "The resume does not match the key skills required for the job."
 
 # Placeholder function for resume analysis
 def analyze_resume(resume_text, description, use_gpt=True):
-    # Using GPT model for justification if use_gpt is True, otherwise keyword matching
     if use_gpt:
         justification = generate_gpt_justification(resume_text, description)
     else:
         justification = generate_keyword_justification(resume_text, description)
     
-    # Placeholder fit score, you can replace this logic with a more advanced model
-    fit_score = 0.8 if use_gpt else 0.5  # Different scores based on the method
+    fit_score = 0.8 if use_gpt else 0.5  # Placeholder for fit score logic
     return {
         'fit_score': fit_score,
         'justification': justification
@@ -44,7 +42,7 @@ def analyze_resume(resume_text, description, use_gpt=True):
 # Function to rank resumes
 def rank_resumes(resume_data, description, use_gpt=True):
     results = []
-    for index, row in resume_data.iterrows():
+    for _, row in resume_data.iterrows():
         analysis = analyze_resume(row['resume_text'], description, use_gpt=use_gpt)
         results.append({
             'name': row['name'],
@@ -52,9 +50,7 @@ def rank_resumes(resume_data, description, use_gpt=True):
             'justification': analysis['justification']
         })
     
-    results_df = pd.DataFrame(results)
-    results_df = results_df.sort_values(by='fit_score', ascending=False).reset_index(drop=True)
-    return results_df
+    return pd.DataFrame(results).sort_values(by='fit_score', ascending=False).reset_index(drop=True)
 
 # Streamlit UI
 st.title("Kavin's Find")
@@ -77,19 +73,14 @@ if uploaded_files:
         file_content = uploaded_file.read()
         
         # Extract text from the uploaded file
+        resume_text = ""
         if file_type == "application/pdf":
-            import fitz  # PyMuPDF
             pdf_document = fitz.open(stream=file_content, filetype="pdf")
-            resume_text = ""
-            for page in pdf_document:
-                resume_text += page.get_text()
+            resume_text = " ".join([page.get_text() for page in pdf_document])
             pdf_document.close()
         elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            from docx import Document
             doc = Document(BytesIO(file_content))
             resume_text = "\n".join([para.text for para in doc.paragraphs])
-        else:
-            resume_text = "Unsupported file type"
         
         resume_data.append({'name': file_name, 'resume_text': resume_text})
     
