@@ -46,7 +46,7 @@ def rank_candidates(resumes, job_description):
 # Streamlit application
 def main():
     st.title("Kavin's AI Resume Analyser")
-    
+
     # Upload job description
     job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
     if job_description_file:
@@ -77,8 +77,8 @@ def main():
                     st.write(f"**Candidate {i+1}**:")
                     st.write(f"Score: {scores[ranked_indices[i]]:.2f}")
                     
-                    # Display resume snippet
-                    st.text_area("Resume Snippet", resumes[ranked_indices[i]][:1000], height=200)
+                    # Display resume snippet with unique key
+                    st.text_area(f"Resume Snippet {i+1}", resumes[ranked_indices[i]][:1000], height=200, key=f"resume_snippet_{i}")
                 
                 # Generate and display charts
                 fig, ax = plt.subplots()
