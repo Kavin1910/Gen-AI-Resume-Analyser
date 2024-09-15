@@ -6,7 +6,7 @@ import os
 import pandas as pd
 
 # Hugging Face API details (consider a larger model for better analysis)
-API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
 headers = {"Authorization": f"Bearer {os.getenv('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')}"}
 
 # Function to extract text from PDF
