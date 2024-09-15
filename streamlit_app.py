@@ -1,14 +1,13 @@
 import streamlit as st
-import os
-from groq import Groq
+import requests
 from PyPDF2 import PdfReader
 from docx import Document
-import seaborn as sns
-import matplotlib.pyplot as plt
+import os
 
-# Initialize Groq client with API key from Streamlit secrets
-GROQ_API_KEY = st.secrets["groq"]["api_key"]
-client = Groq(api_key=GROQ_API_KEY)
+# Hugging Face API details
+API_URL = "https://api-inference.huggingface.co/models/gpt2"  # Replace with your desired Hugging Face model
+HUGGING_FACE_API_KEY = os.getenv("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")  # Make sure this environment variable is set
+headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
@@ -24,29 +23,32 @@ def extract_doc_text(doc_file):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to query Groq API for LLaMA with input truncation
-def query_groq_llama(prompt):
+# Function to query Hugging Face API
+def query_huggingface(payload):
     try:
-        response = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error: {str(e)}"
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()  # Check for HTTP errors
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
 
-# Function to analyze resume using Groq LLaMA with error handling
-def analyze_resume_llama(resume_text, job_description):
-    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, provide a detailed justification (50 words only)."
-    response = query_groq_llama(prompt)
-    return response[:500]  # Truncate response to 50 words
+# Function to analyze resume using Hugging Face API
+def analyze_resume_hf(resume_text, job_description):
+    prompt = f"Analyze this resume: {resume_text}. Based on the job description: {job_description}, give a score and reasoning."
+    payload = {"inputs": prompt}
+    response = query_huggingface(payload)
+    
+    if response and 'error' not in response:
+        return response[0].get('generated_text', "No text generated")
+    else:
+        return "Error in generating response from Hugging Face AI."
 
 # Main Streamlit app
-st.title("Kavin's Resume Analysis Tool (Groq & LLaMA)")
+st.title("Illama HR Resume Analysis Tool (Hugging Face)")
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
-job_description = st.text_area("Enter the job description for the role (e.g., Human Resources Manager):", height=150)
+job_description = st.text_area("Enter the job description for the role (e.g., Software Developer):", height=150)
 
 # Uploading resumes
 uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", accept_multiple_files=True)
@@ -64,30 +66,19 @@ if uploaded_files and job_description:
         else:
             st.write(f"Unsupported file type: {uploaded_file.name}")
             continue
-
-        # Analyze resume using Groq LLaMA
-        analysis_result = analyze_resume_llama(resume_text, job_description)
+        
+        # Analyze resume using Hugging Face API
+        analysis_result = analyze_resume_hf(resume_text, job_description)
         results.append({
             'file_name': uploaded_file.name,
             'analysis': analysis_result
         })
+    
+    # Sort candidates based on the analysis (Placeholder sorting)
+    sorted_results = sorted(results, key=lambda x: len(x['analysis']), reverse=True)
 
-    # Display results and rankings
+    # Display top 5 candidates
     st.write("Top 5 candidates:")
-
-    # Create a DataFrame for visualization
-    import pandas as pd
-
-    # Assuming analysis result length as a score for ranking
-    df = pd.DataFrame({
-        'Candidate': [result['file_name'] for result in results],
-        'Justification Length': [len(result['analysis']) for result in results]
-    })
-
-    # Sort candidates based on the analysis length
-    sorted_results = df.sort_values(by='Justification Length', ascending=False).head(5)
-
-    # Plot rankings with seaborn
-    st.write("Candidate Rankings")
-    sns.barplot(data=sorted_results, x='Justification Length', y='Candidate')
-    st.pyplot()
+    for idx, result in enumerate(sorted_results[:5]):
+        st.write(f"**Candidate {idx+1}: {result['file_name']}**")
+        st.write(f"**Justification:** {result['analysis']}")
