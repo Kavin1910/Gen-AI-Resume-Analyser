@@ -5,9 +5,9 @@ from docx import Document
 import os
 import pandas as pd
 
-# Hugging Face API details (consider a larger model for better analysis)
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
-headers = {"Authorization": f"Bearer {os.getenv('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')}"}
+# Hugging Face API details (use a suitable model URL)
+API_URL = "https://api-inference.huggingface.co/models/openai-community/gpt2"  # Replace with your model URL
+headers = {"Authorization": f"Bearer {os.getenv('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')}"}  # Replace with your actual API key
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
@@ -46,6 +46,7 @@ def analyze_resume_hf(resume_text, job_description):
 
 # Main Streamlit app
 st.title("Illama HR Resume Analysis Tool (Hugging Face)")
+
 st.write("Upload resumes in PDF or Word format, and we'll analyze and rank the candidates for a specific role.")
 
 # Job Description Input
@@ -53,6 +54,9 @@ job_description = st.text_area("Enter the job description for the role (e.g., So
 
 # Uploading resumes
 uploaded_files = st.file_uploader("Upload resumes (PDF or Word)", accept_multiple_files=True)
+
+# Filter option for number of top candidates
+num_candidates = st.slider("Select number of top candidates to display", min_value=1, max_value=10, value=5)
 
 if uploaded_files and job_description:
     st.write("Analyzing resumes...")
@@ -89,18 +93,18 @@ if uploaded_files and job_description:
     # Sort candidates based on the score
     sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
 
-    # Display top 5 candidates
-    st.write("**Top Candidates:**")
+    # Display top candidates
+    st.write(f"**Top {num_candidates} Candidates:**")
 
-    for idx, result in enumerate(sorted_results[:5]):
+    for idx, result in enumerate(sorted_results[:num_candidates]):
         st.write(f"**{idx+1}. {result['file_name']} (Score: {result['score']})**")
         st.write(f"**Justification:** {result['analysis']}")
         st.write(f"**Key Skills:** {result['key_skills']}")  # Display extracted key skills
 
     # Prepare data for chart
     chart_data = {
-        'Candidate': [result['file_name'] for result in sorted_results[:5]],
-        'Score': [result['score'] for result in sorted_results[:5]]
+        'Candidate': [result['file_name'] for result in sorted_results[:num_candidates]],
+        'Score': [result['score'] for result in sorted_results[:num_candidates]]
     }
 
     df = pd.DataFrame(chart_data)
