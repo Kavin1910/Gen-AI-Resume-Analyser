@@ -6,9 +6,8 @@ import os
 import pandas as pd
 
 # Hugging Face API details
-API_URL = "https://api-inference.huggingface.co/models/distilgpt2"  # Correct URL for DistilGPT-2
-HUGGING_FACE_API_KEY = os.getenv("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")  # Ensure this environment variable is set
-headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
+API_URL = "https://api-inference.huggingface.co/models/distilbert/distilgpt2"
+headers = {"Authorization": "Bearer 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"}
 
 # Function to extract text from PDF
 def extract_pdf_text(pdf_file):
