@@ -43,6 +43,11 @@ def rank_candidates(resumes, job_description):
     ranked_indices = np.argsort(scores)[::-1]
     return ranked_indices, scores
 
+# Function to format resume snippet as bullet points (max 3 lines)
+def format_resume_snippet(snippet):
+    snippet_lines = snippet.split('. ')
+    return "\n".join([f"• {line.strip()}" for line in snippet_lines[:3]])
+
 # Streamlit application
 def main():
     st.title("Kavin's AI Resume Analyzer and Ranking")
@@ -75,27 +80,19 @@ def main():
                 st.write(f"Top {num_candidates} Candidates:")
                 for i in range(min(num_candidates, len(ranked_indices))):
                     st.write(f"**Candidate {i+1}**:")
-                    st.write(f"Score: {scores[ranked_indices[i]] * 100:.2f}%")
+                    st.write(f"Score: {scores[ranked_indices[i]]:.2f}%")
                     
-                    # Display resume snippet as bullet points (max 3 lines)
-                    snippet = resumes[ranked_indices[i]]
-                    snippet_lines = snippet.split('. ')
-                    snippet_display = "\n".join([f"• {line.strip()}" for line in snippet_lines[:3]])
-                    st.markdown(snippet_display)
+                    # Display resume snippet
+                    st.text_area(f"Resume Snippet {i+1}", format_resume_snippet(resumes[ranked_indices[i]]), height=150)
                 
                 # Generate and display charts
                 fig, ax = plt.subplots(figsize=(10, 5))
-                top_scores = [scores[idx] * 100 for idx in ranked_indices[:num_candidates]]
+                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
                 ax.bar(range(len(top_scores)), top_scores, color='blue')
                 ax.set_xlabel('Candidates')
                 ax.set_ylabel('Scores (%)')
                 ax.set_title('Resume Scores')
-                
-                # Handle x-tick labels
-                tick_labels = [f"Candidate {i+1}" for i in range(min(num_candidates, len(ranked_indices)))]
-                ax.set_xticks(range(len(tick_labels)))
-                ax.set_xticklabels(tick_labels, rotation=45)
-                
+                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
                 st.pyplot(fig)
                 
                 # Generate assessment justification
@@ -107,7 +104,7 @@ def main():
                         f"Job Description: {job_description}\n\n"
                         f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
                     )
-                    justification = nlp(justification_prompt, max_length=100, truncation=True)
+                    justification = nlp(justification_prompt, max_new_tokens=100)  # Adjust max_new_tokens as needed
                     summary = justification[0]['generated_text']
                     # Limit to 2 lines and format as bullet points
                     lines = summary.split('\n')[:2]
