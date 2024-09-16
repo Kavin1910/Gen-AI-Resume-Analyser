@@ -91,15 +91,25 @@ def main():
                 ax.set_xlabel('Candidates')
                 ax.set_ylabel('Scores (%)')
                 ax.set_title('Resume Scores')
-                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)])
+
+                # Rotate the x-axis labels for better readability
+                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45, ha="right")
+
                 st.pyplot(fig)
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
                 try:
-                    nlp = pipeline("text-generation", model="gpt2")  # Use a valid model
-                    justification = nlp(f"Reason for high ranking based on their resumes and job description:\nJob Description: {job_description}\nResumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}")  # Justification for top-N candidates
-                    st.write(justification[0]['generated_text'])
+                    nlp = pipeline("text-generation", model="gpt2", max_length=50)  # Limit output to a shorter text
+                    justification_input = (
+                        f"Provide a short justification for high ranking based on resumes and job description:\n"
+                        f"Job Description: {job_description}\n"
+                        f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
+                    )
+                    justification = nlp(justification_input)
+                    
+                    # Truncate to 200 characters to fit within two lines
+                    st.write(justification[0]['generated_text'][:200])
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
             else:
