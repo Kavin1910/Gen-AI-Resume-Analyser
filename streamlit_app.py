@@ -32,8 +32,17 @@ def preprocess_text(text):
 def compute_relevance_score(resumes, job_description):
     vectorizer = TfidfVectorizer()
     documents = resumes + [job_description]
+    
+    # Compute TF-IDF matrix
     tfidf_matrix = vectorizer.fit_transform(documents)
+    st.write("TF-IDF Matrix:")
+    st.write(tfidf_matrix.toarray())  # Print the TF-IDF matrix for debugging
+    
+    # Compute cosine similarity
     cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
+    st.write("Cosine Similarity:")
+    st.write(cosine_sim)  # Print the cosine similarity scores for debugging
+    
     return cosine_sim.flatten()
 
 # Function to rank candidates and justify selections
@@ -114,14 +123,13 @@ def main():
                     st.markdown("• " + "\n• ".join(lines))
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
-            
+                
+                # Add "Thank You" image at the end
+                st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
             else:
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
-        
-        # Add "Thank You" image        
-        st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600") 
     else:
         st.write("Please upload a job description.")
 
