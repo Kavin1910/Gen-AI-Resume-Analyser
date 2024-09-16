@@ -48,7 +48,7 @@ def main():
     st.title("Kavin's AI Resume Analyzer and Ranking")
     
     # Upload job description
-    job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
+    job_description_file = st.file_uploader("Upload Job Description (Text File/Word)", type=["pdf", "docx"])
     if job_description_file:
         job_description = job_description_file.read().decode("utf-8")
         job_description = preprocess_text(job_description)
@@ -74,43 +74,36 @@ def main():
                 # Display results
                 st.write(f"Top {num_candidates} Candidates:")
                 for i in range(min(num_candidates, len(ranked_indices))):
-                    candidate_name = f"Candidate {i+1}"
-                    st.write(f"### {candidate_name}")
-                    st.write(f"**Score: {scores[ranked_indices[i]] * 100:.2f}%**")  # Score in percentage
+                    st.write(f"**Candidate {i+1}**:")
+                    st.write(f"Score: {scores[ranked_indices[i]]:.2f}%")
                     
-                    # Display resume snippet in bullet points
-                    resume_snippet = resumes[ranked_indices[i]].split('. ')
-                    st.write(f"**Resume Snippet {i+1}:**")
-                    for bullet in resume_snippet[:10]:  # Limiting to first 10 sentences
-                        st.write(f"- {bullet.strip()}")
+                    # Display resume snippet
+                    st.text_area(f"Resume Snippet {i+1}", resumes[ranked_indices[i]][:1000], height=100)
                 
                 # Generate and display charts
-                fig, ax = plt.subplots()
+                fig, ax = plt.subplots(figsize=(10, 5))
                 top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
-                ax.bar(range(len(top_scores)), [s * 100 for s in top_scores], color='blue')  # Scores in percentage
+                ax.bar(range(len(top_scores)), top_scores, color='blue')
                 ax.set_xlabel('Candidates')
                 ax.set_ylabel('Scores (%)')
                 ax.set_title('Resume Scores')
-
-                # Rotate the x-axis labels for better readability
-                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45, ha="right")
-
+                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
                 st.pyplot(fig)
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
                 try:
-                    nlp = pipeline("text-generation", model="gpt2", tokenizer="gpt2", 
-                                    truncation=True, max_length=50)  # Explicit truncation and shorter max_length
-                    justification_input = (
-                        f"Provide a short justification for high ranking based on resumes and job description:\n"
-                        f"Job Description: {job_description}\n"
+                    nlp = pipeline("text-generation", model="gpt2")
+                    justification_prompt = (
+                        f"Generate a 2-line summary of why the following resumes are a good match for the job description:\n\n"
+                        f"Job Description: {job_description}\n\n"
                         f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
                     )
-                    justification = nlp(justification_input, truncation=True)
-                    
-                    # Truncate to 200 characters to fit within two lines
-                    st.write(justification[0]['generated_text'][:200])
+                    justification = nlp(justification_prompt, max_length=100, truncation=True)
+                    summary = justification[0]['generated_text']
+                    # Limit to 2 lines
+                    lines = summary.split('\n')[:2]
+                    st.write("\n".join(lines))
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
             else:
