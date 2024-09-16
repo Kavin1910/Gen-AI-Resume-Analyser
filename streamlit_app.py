@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
-from fpdf import FPDF  # Import FPDF for PDF generation
+from fpdf import FPDF
 from transformers import pipeline
 
 # Function to extract text from PDF
@@ -15,7 +15,7 @@ def extract_text_from_pdf(file):
     pdf_reader = PdfReader(file)
     text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text() or ""  # Handle cases where extract_text() might return None
+        text += page.extract_text() or ""
     return text
 
 # Function to extract text from Word documents
@@ -34,11 +34,7 @@ def preprocess_text(text):
 def compute_relevance_score(resumes, job_description):
     vectorizer = TfidfVectorizer()
     documents = resumes + [job_description]
-    
-    # Compute TF-IDF matrix
     tfidf_matrix = vectorizer.fit_transform(documents)
-    
-    # Compute cosine similarity
     cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
     return cosine_sim.flatten()
 
@@ -75,33 +71,21 @@ def create_pdf_report(candidate_data, num_candidates):
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
 
-        # Justification (add check for key existence)
+        # Justification (only include if available)
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 10, txt="Justification", ln=True)
         pdf.set_font("Arial", size=12)
+        
         justification = candidate_data[i].get('justification', 'No justification provided')
         pdf.multi_cell(0, 10, txt=justification, border=1)
-
+    
     # Save PDF to BytesIO buffer
     pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'F')  # Save PDF to buffer
-    pdf_output.seek(0)  # Move cursor to start of buffer
+    pdf.output(pdf_output, 'S')  # Save PDF to buffer as string
+    pdf_output.seek(0)
     
     return pdf_output
-
-
-# Streamlit app: Generate the PDF download button
-if candidate_data:
-    pdf_output = create_pdf_report(candidate_data, num_candidates)
-    
-    # Download button for the PDF
-    st.download_button(
-        label="Download Report as PDF",
-        data=pdf_output.getvalue(),  # Get the byte content from the buffer
-        file_name="AI_Resume_Analyzer_Report.pdf",
-        mime="application/pdf"
-    )
 
 # Streamlit application
 def main():
@@ -155,7 +139,8 @@ def main():
                     # Save data for PDF report
                     candidate_data.append({
                         'score': score,
-                        'snippet': ' '.join(snippets[:3])
+                        'snippet': ' '.join(snippets[:3]),
+                        'justification': ''  # Placeholder for justification
                     })
                 
                 # Generate and display charts
@@ -179,9 +164,12 @@ def main():
                     )
                     justification = nlp(justification_prompt, max_length=150, truncation=True)
                     summary = justification[0]['generated_text']
-                    # Limit to 2 lines and format as bullet points
                     lines = summary.split('\n')[:2]
                     st.markdown("• " + "\n• ".join(lines))
+
+                    # Update candidate data with justification
+                    for i in range(min(num_candidates, len(ranked_indices))):
+                        candidate_data[i]['justification'] = lines[i] if i < len(lines) else 'No justification provided'
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
 
@@ -189,13 +177,16 @@ def main():
                 st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
 
                 # Button to download report as PDF
-                pdf_output = create_pdf_report(candidate_data, num_candidates)
-                st.download_button(
-                    label="Download Report as PDF",
-                    data=pdf_output,
-                    file_name="AI_Resume_Analyzer_Report.pdf",
-                    mime="application/pdf"
-                )
+                if candidate_data:
+                    pdf_output = create_pdf_report(candidate_data, num_candidates)
+                    st.download_button(
+                        label="Download Report as PDF",
+                        data=pdf_output,
+                        file_name="AI_Resume_Analyzer_Report.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.write("No candidate data available to generate PDF.")
             else:
                 st.write("No resumes uploaded.")
         else:
