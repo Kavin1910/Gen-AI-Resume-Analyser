@@ -74,18 +74,22 @@ def main():
                 # Display results
                 st.write(f"Top {num_candidates} Candidates:")
                 for i in range(min(num_candidates, len(ranked_indices))):
-                    st.write(f"**Candidate {i+1}**:")
-                    st.write(f"Score: {scores[ranked_indices[i]]:.2f}")
+                    candidate_name = f"Candidate {i+1}"
+                    st.write(f"### {candidate_name}")
+                    st.write(f"**Score: {scores[ranked_indices[i]] * 100:.2f}%**")  # Score in percentage
                     
-                    # Display resume snippet
-                    st.text_area(f"Resume Snippet {i+1}", resumes[ranked_indices[i]][:1000], height=200)
+                    # Display resume snippet in bullet points
+                    resume_snippet = resumes[ranked_indices[i]].split('. ')
+                    st.write(f"**Resume Snippet {i+1}:**")
+                    for bullet in resume_snippet[:10]:  # Limiting to first 10 sentences
+                        st.write(f"- {bullet.strip()}")
                 
                 # Generate and display charts
                 fig, ax = plt.subplots()
                 top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
-                ax.bar(range(len(top_scores)), top_scores, color='blue')
+                ax.bar(range(len(top_scores)), [s * 100 for s in top_scores], color='blue')  # Scores in percentage
                 ax.set_xlabel('Candidates')
-                ax.set_ylabel('Scores')
+                ax.set_ylabel('Scores (%)')
                 ax.set_title('Resume Scores')
                 plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)])
                 st.pyplot(fig)
