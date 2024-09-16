@@ -73,6 +73,9 @@ def main():
                 # Rank candidates
                 ranked_indices, scores = rank_candidates(resumes, job_description)
                 
+                # Round scores to nearest whole number
+                scores_rounded = np.round(scores).astype(int)
+                
                 # Options to select top-N candidates
                 num_candidates = st.selectbox("Select number of top candidates to display", [1, 5, 10, 15, 20])
                 
@@ -80,14 +83,14 @@ def main():
                 st.write(f"Top {num_candidates} Candidates:")
                 for i in range(min(num_candidates, len(ranked_indices))):
                     st.write(f"**Candidate {i+1}**:")
-                    st.write(f"Score: {scores[ranked_indices[i]]:.2f}%")
+                    st.write(f"Score: {scores_rounded[ranked_indices[i]]}%")
                     
                     # Display resume snippet
                     st.text_area(f"Resume Snippet {i+1}", format_resume_snippet(resumes[ranked_indices[i]]), height=150)
                 
                 # Generate and display charts
                 fig, ax = plt.subplots(figsize=(10, 5))
-                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
+                top_scores = [scores_rounded[idx] for idx in ranked_indices[:num_candidates]]
                 ax.bar(range(len(top_scores)), top_scores, color='blue')
                 ax.set_xlabel('Candidates')
                 ax.set_ylabel('Scores (%)')
@@ -100,11 +103,11 @@ def main():
                 try:
                     nlp = pipeline("text-generation", model="gpt2")
                     justification_prompt = (
-                        f"Generate a 2-line summary of why the following resumes are a good match for the job description:\n\n"
+                        f"Generate a summary of why the following resumes are a good match for the job description:\n\n"
                         f"Job Description: {job_description}\n\n"
                         f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
                     )
-                    justification = nlp(justification_prompt, max_new_tokens=100)  # Adjust max_new_tokens as needed
+                    justification = nlp(justification_prompt, max_length=200)  # Increase max_length for better output
                     summary = justification[0]['generated_text']
                     # Limit to 2 lines and format as bullet points
                     lines = summary.split('\n')[:2]
