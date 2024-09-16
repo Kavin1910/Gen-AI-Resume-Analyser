@@ -48,7 +48,7 @@ def main():
     st.title("Kavin's AI Resume Analyzer and Ranking")
     
     # Upload job description
-    job_description_file = st.file_uploader("Upload Job Description (Text File)", type="pdf")
+    job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
     if job_description_file:
         job_description = job_description_file.read().decode("utf-8")
         job_description = preprocess_text(job_description)
