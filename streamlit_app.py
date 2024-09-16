@@ -101,17 +101,21 @@ def main():
                     )
                     justification = nlp(justification_prompt, max_length=100, truncation=True)
                     summary = justification[0]['generated_text']
-                    # Limit to 2 lines
+                    # Limit to 2 lines and format as bullet points
                     lines = summary.split('\n')[:2]
-                    st.write("\n".join(lines))
+                    st.markdown("• " + "\n• ".join(lines))
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
+            
             else:
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
     else:
         st.write("Please upload a job description.")
+    
+    # Add "Thank You" image
+    st.image("https://t3.ftcdn.net/jpg/08/36/69/48/360_F_836694819_0BLJKSdRhRngd4GHdUKY66wBg88Fu5ZF.jpg", caption="Thank You")
 
 if __name__ == "__main__":
     main()
