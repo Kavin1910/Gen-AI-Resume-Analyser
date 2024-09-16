@@ -116,7 +116,7 @@ def main():
     
     # Add "Thank You" image
     st.write("Thank you for using the AI Resume Analyzer and Ranking tool!")
-    st.image("https://path/to/thank_you_image.jpg", caption="Thank You")
+    st.image("https://path/to/thank_you_image.jpg")
 
 if __name__ == "__main__":
     main()
