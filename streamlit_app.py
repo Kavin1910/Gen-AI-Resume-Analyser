@@ -111,11 +111,12 @@ def main():
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
+        
+        # Add "Thank You" image        
+        st.image("https://drive.google.com/file/d/1MpKYzJA27MEz85EO57EPaiJFAuePAglI/view?usp=sharing")
+    
     else:
         st.write("Please upload a job description.")
-    
-    # Add "Thank You" image
-    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQa_BL9bpciXP5J8v8I2gkVoQ0KcUIOwRDOIQ&s")
 
 if __name__ == "__main__":
     main()
