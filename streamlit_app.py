@@ -65,7 +65,7 @@ def create_pdf_report(candidate_data, num_candidates):
         # Label the resume snippet section
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 10, txt="Resume Snippet", ln=True)  # Label for the resume snippet box
+        pdf.cell(200, 10, txt="Resume Snippet", ln=True)
         
         # Resume Snippet content inside a bordered box
         pdf.set_font("Arial", size=12)
@@ -142,6 +142,10 @@ def main():
                         'snippet': ' '.join(snippets[:3]),
                         'justification': ''  # Placeholder for justification
                     })
+
+                # Debugging output
+                st.write("Debugging Information:")
+                st.write(f"Candidate Data: {candidate_data}")
                 
                 # Generate and display charts
                 fig, ax = plt.subplots(figsize=(10, 5))
