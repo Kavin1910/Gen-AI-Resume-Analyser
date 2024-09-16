@@ -48,7 +48,7 @@ def rank_candidates(resumes, job_description):
     ranked_indices = np.argsort(scores)[::-1]
     return ranked_indices, scores
 
-# Function to create PDF report
+# Function to create a PDF report
 def create_pdf_report(candidate_data, num_candidates):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -65,11 +65,26 @@ def create_pdf_report(candidate_data, num_candidates):
         pdf.ln(10)
         pdf.cell(200, 10, txt=f"Candidate {i+1}:", ln=True)
         pdf.cell(200, 10, txt=f"Score: {candidate_data[i]['score']}%", ln=True)
-        pdf.multi_cell(0, 10, txt=f"Resume Snippet: {candidate_data[i]['snippet']}", border=1)
+        
+        # Label the resume snippet section
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, txt="Resume Snippet", ln=True)  # Label for the resume snippet box
+        
+        # Resume Snippet content inside a bordered box
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
+
+        # Justification
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, txt="Justification", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['justification']}", border=1)
     
-    # Save PDF to buffer
+    # Save PDF to BytesIO buffer
     pdf_output = io.BytesIO()
-    pdf.output(pdf_output)
+    pdf.output(pdf_output, 'S')  # Save PDF to buffer as string
     pdf_output.seek(0)
     
     return pdf_output
