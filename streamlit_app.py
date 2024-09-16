@@ -100,13 +100,14 @@ def main():
                 # Generate assessment justification
                 st.write("Assessment Justification:")
                 try:
-                    nlp = pipeline("text-generation", model="gpt2", max_length=50)  # Limit output to a shorter text
+                    nlp = pipeline("text-generation", model="gpt2", tokenizer="gpt2", 
+                                    truncation=True, max_length=50)  # Explicit truncation and shorter max_length
                     justification_input = (
                         f"Provide a short justification for high ranking based on resumes and job description:\n"
                         f"Job Description: {job_description}\n"
                         f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
                     )
-                    justification = nlp(justification_input)
+                    justification = nlp(justification_input, truncation=True)
                     
                     # Truncate to 200 characters to fit within two lines
                     st.write(justification[0]['generated_text'][:200])
