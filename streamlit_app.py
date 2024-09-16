@@ -6,6 +6,7 @@ from docx import Document
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
+import io
 from transformers import pipeline
 
 # Function to extract text from PDF
@@ -26,7 +27,7 @@ def extract_text_from_docx(file):
 
 # Function to preprocess text
 def preprocess_text(text):
-    return text.lower().replace('\n', ' ')
+    return text.lower().strip().replace('\n', ' ')
 
 # Function to compute relevance score
 def compute_relevance_score(resumes, job_description):
@@ -35,14 +36,9 @@ def compute_relevance_score(resumes, job_description):
     
     # Compute TF-IDF matrix
     tfidf_matrix = vectorizer.fit_transform(documents)
-    st.write("TF-IDF Matrix:")
-    st.write(tfidf_matrix.toarray())  # Print the TF-IDF matrix for debugging
     
     # Compute cosine similarity
     cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-    st.write("Cosine Similarity:")
-    st.write(cosine_sim)  # Print the cosine similarity scores for debugging
-    
     return cosine_sim.flatten()
 
 # Function to rank candidates and justify selections
@@ -50,11 +46,6 @@ def rank_candidates(resumes, job_description):
     scores = compute_relevance_score(resumes, job_description)
     ranked_indices = np.argsort(scores)[::-1]
     return ranked_indices, scores
-
-# Function to format resume snippet as bullet points (max 3 lines)
-def format_resume_snippet(snippet):
-    snippet_lines = snippet.split('. ')
-    return "\n".join([f"• {line.strip()}" for line in snippet_lines[:3]])
 
 # Streamlit application
 def main():
@@ -81,9 +72,6 @@ def main():
                 # Rank candidates
                 ranked_indices, scores = rank_candidates(resumes, job_description)
                 
-                # Round scores to nearest whole number
-                scores_rounded = np.round(scores).astype(int)
-                
                 # Options to select top-N candidates
                 num_candidates = st.selectbox("Select number of top candidates to display", [1, 5, 10, 15, 20])
                 
@@ -91,45 +79,50 @@ def main():
                 st.write(f"Top {num_candidates} Candidates:")
                 for i in range(min(num_candidates, len(ranked_indices))):
                     st.write(f"**Candidate {i+1}**:")
-                    st.write(f"Score: {scores_rounded[ranked_indices[i]]}%")
+                    st.write(f"Score: {int(scores[ranked_indices[i]] * 100)}%")
                     
                     # Display resume snippet
-                    st.text_area(f"Resume Snippet {i+1}", format_resume_snippet(resumes[ranked_indices[i]]), height=150)
+                    resume_snippet = resumes[ranked_indices[i]]
+                    snippets = resume_snippet.split('. ')
+                    st.write(f"Resume Snippet {i+1}:")
+                    for snippet in snippets[:3]:  # Show up to 3 snippets
+                        st.write(f"• {snippet.strip()}")
                 
                 # Generate and display charts
-                if len(ranked_indices) > 0:
-                    fig, ax = plt.subplots(figsize=(10, 5))
-                    top_scores = [scores_rounded[idx] for idx in ranked_indices[:num_candidates]]
-                    ax.bar(range(len(top_scores)), top_scores, color='blue')
-                    ax.set_xlabel('Candidates')
-                    ax.set_ylabel('Scores (%)')
-                    ax.set_title('Resume Scores')
-                    plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(len(top_scores))], rotation=45)
-                    st.pyplot(fig)
+                fig, ax = plt.subplots(figsize=(10, 5))
+                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
+                ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
+                ax.set_xlabel('Candidates')
+                ax.set_ylabel('Scores (%)')
+                ax.set_title('Resume Scores')
+                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
+                st.pyplot(fig)
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
                 try:
                     nlp = pipeline("text-generation", model="gpt2")
                     justification_prompt = (
-                        f"Generate a summary of why the following resumes are a good match for the job description:\n\n"
+                        f"Generate a 2-line summary of why the following resumes are a good match for the job description:\n\n"
                         f"Job Description: {job_description}\n\n"
                         f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
                     )
-                    justification = nlp(justification_prompt, max_length=200)  # Increase max_length for better output
+                    justification = nlp(justification_prompt, max_length=150, truncation=True)
                     summary = justification[0]['generated_text']
                     # Limit to 2 lines and format as bullet points
                     lines = summary.split('\n')[:2]
                     st.markdown("• " + "\n• ".join(lines))
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
-                
-                # Add "Thank You" image at the end
-                st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
+            
             else:
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
+        
+        # Add "Thank You" image        
+        st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600") 
+    
     else:
         st.write("Please upload a job description.")
 
