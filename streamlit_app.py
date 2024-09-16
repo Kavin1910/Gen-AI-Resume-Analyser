@@ -7,6 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
+from fpdf import FPDF  # Import FPDF for PDF generation
 from transformers import pipeline
 
 # Function to extract text from PDF
@@ -47,6 +48,32 @@ def rank_candidates(resumes, job_description):
     ranked_indices = np.argsort(scores)[::-1]
     return ranked_indices, scores
 
+# Function to create PDF report
+def create_pdf_report(candidate_data, num_candidates):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, txt="AI Resume Analyzer Report", ln=True, align='C')
+
+    # Content
+    pdf.set_font("Arial", size=12)
+    
+    for i in range(min(num_candidates, len(candidate_data))):
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Candidate {i+1}:", ln=True)
+        pdf.cell(200, 10, txt=f"Score: {candidate_data[i]['score']}%", ln=True)
+        pdf.multi_cell(0, 10, txt=f"Resume Snippet: {candidate_data[i]['snippet']}", border=1)
+    
+    # Save PDF to buffer
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    
+    return pdf_output
+
 # Streamlit application
 def main():
     st.title("Kavin's AI Resume Analyzer and Ranking")
@@ -75,18 +102,32 @@ def main():
                 # Options to select top-N candidates
                 num_candidates = st.selectbox("Select number of top candidates to display", [1, 5, 10, 15, 20])
                 
-                # Display results
-                st.write(f"Top {num_candidates} Candidates:")
+                # Collect candidate data for PDF report
+                candidate_data = []
                 for i in range(min(num_candidates, len(ranked_indices))):
                     st.write(f"**Candidate {i+1}**:")
-                    st.write(f"Score: {int(scores[ranked_indices[i]] * 100)}%")
+                    score = int(scores[ranked_indices[i]] * 100)
+                    st.write(f"Score: {score}%")
                     
-                    # Display resume snippet
+                    # Display resume snippet in a box-like structure
                     resume_snippet = resumes[ranked_indices[i]]
                     snippets = resume_snippet.split('. ')
-                    st.write(f"Resume Snippet {i+1}:")
-                    for snippet in snippets[:3]:  # Show up to 3 snippets
-                        st.write(f"• {snippet.strip()}")
+                    
+                    # HTML for box-like structure
+                    snippet_html = f"""
+                    <div style="border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-bottom: 10px;">
+                    <p style="font-size: 14px; font-family: 'Arial', sans-serif;">
+                    {'<br>'.join(f'• {snippet.strip()}' for snippet in snippets[:3])}
+                    </p>
+                    </div>
+                    """
+                    st.markdown(snippet_html, unsafe_allow_html=True)
+
+                    # Save data for PDF report
+                    candidate_data.append({
+                        'score': score,
+                        'snippet': ' '.join(snippets[:3])
+                    })
                 
                 # Generate and display charts
                 fig, ax = plt.subplots(figsize=(10, 5))
@@ -114,14 +155,22 @@ def main():
                     st.markdown("• " + "\n• ".join(lines))
                 except Exception as e:
                     st.error(f"Error generating justification: {e}")
-            
+
+                # Add "Thank You" image        
+                st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
+
+                # Button to download report as PDF
+                pdf_output = create_pdf_report(candidate_data, num_candidates)
+                st.download_button(
+                    label="Download Report as PDF",
+                    data=pdf_output,
+                    file_name="AI_Resume_Analyzer_Report.pdf",
+                    mime="application/pdf"
+                )
             else:
                 st.write("No resumes uploaded.")
         else:
             st.write("Please upload resumes.")
-        
-        # Add "Thank You" image        
-        st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600") 
     
     else:
         st.write("Please upload a job description.")
