@@ -90,7 +90,12 @@ def main():
                 ax.set_xlabel('Candidates')
                 ax.set_ylabel('Scores (%)')
                 ax.set_title('Resume Scores')
-                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
+                
+                # Handle x-tick labels
+                tick_labels = [f"Candidate {i+1}" for i in range(min(num_candidates, len(ranked_indices)))]
+                ax.set_xticks(range(len(tick_labels)))
+                ax.set_xticklabels(tick_labels, rotation=45)
+                
                 st.pyplot(fig)
                 
                 # Generate assessment justification
