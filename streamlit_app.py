@@ -75,12 +75,15 @@ def create_pdf_report(candidate_data, num_candidates):
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
 
-        # Justification
+        # Justification (only include if available)
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 10, txt="Justification", ln=True)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['justification']}", border=1)
+        
+        # Check if 'justification' exists in candidate data
+        justification = candidate_data[i].get('justification', 'No justification provided')
+        pdf.multi_cell(0, 10, txt=justification, border=1)
     
     # Save PDF to BytesIO buffer
     pdf_output = io.BytesIO()
