@@ -6,7 +6,6 @@ from docx import Document
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
-import io
 from transformers import pipeline
 
 # Function to extract text from PDF
@@ -89,14 +88,15 @@ def main():
                     st.text_area(f"Resume Snippet {i+1}", format_resume_snippet(resumes[ranked_indices[i]]), height=150)
                 
                 # Generate and display charts
-                fig, ax = plt.subplots(figsize=(10, 5))
-                top_scores = [scores_rounded[idx] for idx in ranked_indices[:num_candidates]]
-                ax.bar(range(len(top_scores)), top_scores, color='blue')
-                ax.set_xlabel('Candidates')
-                ax.set_ylabel('Scores (%)')
-                ax.set_title('Resume Scores')
-                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
-                st.pyplot(fig)
+                if len(ranked_indices) > 0:
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    top_scores = [scores_rounded[idx] for idx in ranked_indices[:num_candidates]]
+                    ax.bar(range(len(top_scores)), top_scores, color='blue')
+                    ax.set_xlabel('Candidates')
+                    ax.set_ylabel('Scores (%)')
+                    ax.set_title('Resume Scores')
+                    plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(len(top_scores))], rotation=45)
+                    st.pyplot(fig)
                 
                 # Generate assessment justification
                 st.write("Assessment Justification:")
