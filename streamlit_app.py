@@ -75,22 +75,33 @@ def create_pdf_report(candidate_data, num_candidates):
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
 
-        # Justification (only include if available)
+        # Justification (add check for key existence)
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 10, txt="Justification", ln=True)
         pdf.set_font("Arial", size=12)
-        
-        # Check if 'justification' exists in candidate data
         justification = candidate_data[i].get('justification', 'No justification provided')
         pdf.multi_cell(0, 10, txt=justification, border=1)
-    
+
     # Save PDF to BytesIO buffer
     pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'S')  # Save PDF to buffer as string
-    pdf_output.seek(0)
+    pdf.output(pdf_output, 'F')  # Save PDF to buffer
+    pdf_output.seek(0)  # Move cursor to start of buffer
     
     return pdf_output
+
+
+# Streamlit app: Generate the PDF download button
+if candidate_data:
+    pdf_output = create_pdf_report(candidate_data, num_candidates)
+    
+    # Download button for the PDF
+    st.download_button(
+        label="Download Report as PDF",
+        data=pdf_output.getvalue(),  # Get the byte content from the buffer
+        file_name="AI_Resume_Analyzer_Report.pdf",
+        mime="application/pdf"
+    )
 
 # Streamlit application
 def main():
