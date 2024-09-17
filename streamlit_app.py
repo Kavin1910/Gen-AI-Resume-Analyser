@@ -8,11 +8,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
-import openai
+from openai import OpenAI
 import os
 
-# Set your OpenAI API key
-openai.api_key = os.getenv("sk-P4MhtrIxMbYiw9RVFBBa0imlqTGC9p8KcXy9I5L8u9T3BlbkFJz9A8BOMEPf47JP-c18pZjkEJgZ6DYyGMLbvsDl7L8A")  # You can replace with your key for testing
+# Set your OpenAI API key securely
+openai.api_key = os.getenv("sk-P4MhtrIxMbYiw9RVFBBa0imlqTGC9p8KcXy9I5L8u9T3BlbkFJz9A8BOMEPf47JP-c18pZjkEJgZ6DYyGMLbvsDl7L8A")  # Ensure you have set this environment variable
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -91,7 +91,12 @@ def create_pdf_report(candidate_data, num_candidates):
     
     return pdf_output
 
-# Function to generate assessment justification with the updated OpenAI API
+from openai import OpenAI
+
+# Initialize OpenAI client
+client = OpenAI()
+
+# Function to generate assessment justification using the updated OpenAI API method
 def generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates):
     justifications = []
     try:
@@ -106,18 +111,18 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
                 f"Justification:"
             )
 
-            # Call OpenAI ChatGPT model using the updated API method
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # Replace with "gpt-3.5-turbo" if needed
+            # Call OpenAI ChatGPT model using the updated client method
+            response = client.chat.completions.create(
+                model="gpt-4",  # Ensure you are using the correct model name, e.g., "gpt-4o-mini" if applicable
                 messages=[
-                    {"role": "system", "content": "You are an expert in HR resume analysis."},
+                    {"role": "system", "content": "You are an expert in resume analysis."},
                     {"role": "user", "content": prompt},
                 ],
-                max_tokens=100,
+                max_tokens=1000,
                 temperature=0.7,
             )
             
-            # Extract the generated justification from ChatGPT's response
+            # Extract the generated justification from the response
             justification = response['choices'][0]['message']['content'].strip()
             justifications.append(justification)
 
@@ -126,6 +131,7 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
         justifications = ["No justification provided"] * num_candidates
 
     return justifications
+
 
 # Streamlit application
 def main():
