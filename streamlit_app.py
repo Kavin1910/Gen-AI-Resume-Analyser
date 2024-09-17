@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
-from openai import OpenAI
+import OpenAI
 import os
 
 # Set your OpenAI API key securely
