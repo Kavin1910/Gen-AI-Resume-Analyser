@@ -91,7 +91,7 @@ def create_pdf_report(candidate_data, num_candidates):
     
     return pdf_output
 
-# Function to generate assessment justification with ChatGPT
+# Function to generate assessment justification with the updated OpenAI API
 def generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates):
     justifications = []
     try:
@@ -106,9 +106,9 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
                 f"Justification:"
             )
 
-            # Call OpenAI ChatGPT model
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",  # You can use "gpt-4" if you have access
+            # Call OpenAI ChatGPT model using the updated API method
+            response = openai.chat_completions.create(
+                model="gpt-4",  # Replace with "gpt-3.5-turbo" if needed
                 messages=[
                     {"role": "system", "content": "You are an expert in HR resume analysis."},
                     {"role": "user", "content": prompt},
@@ -126,6 +126,7 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
         justifications = ["No justification provided"] * num_candidates
 
     return justifications
+
 
 # Streamlit application
 def main():
