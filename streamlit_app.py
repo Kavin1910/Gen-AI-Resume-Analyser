@@ -8,11 +8,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
-import OpenAI
+import openai
 import os
 
 # Set your OpenAI API key securely
-openai.api_key = os.getenv("sk-P4MhtrIxMbYiw9RVFBBa0imlqTGC9p8KcXy9I5L8u9T3BlbkFJz9A8BOMEPf47JP-c18pZjkEJgZ6DYyGMLbvsDl7L8A")  # Ensure you have set this environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Ensure you have set this environment variable
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -91,12 +91,7 @@ def create_pdf_report(candidate_data, num_candidates):
     
     return pdf_output
 
-from openai import OpenAI
-
-# Initialize OpenAI client
-client = OpenAI()
-
-# Function to generate assessment justification using the updated OpenAI API method
+# Function to generate assessment justification using the OpenAI API
 def generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates):
     justifications = []
     try:
@@ -111,9 +106,9 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
                 f"Justification:"
             )
 
-            # Call OpenAI ChatGPT model using the updated client method
-            response = client.chat.completions.create(
-                model="gpt-4",  # Ensure you are using the correct model name, e.g., "gpt-4o-mini" if applicable
+            # Call OpenAI ChatGPT model using the correct method
+            response = openai.ChatCompletion.create(
+                model="gpt-4",  # Ensure you are using the correct model name
                 messages=[
                     {"role": "system", "content": "You are an expert in resume analysis."},
                     {"role": "user", "content": prompt},
@@ -123,7 +118,7 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
             )
             
             # Extract the generated justification from the response
-            justification = response['choices'][0]['message']['content'].strip()
+            justification = response.choices[0].message['content'].strip()
             justifications.append(justification)
 
     except Exception as e:
