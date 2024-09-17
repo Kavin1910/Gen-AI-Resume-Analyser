@@ -12,7 +12,7 @@ import openai
 import os
 
 # Set your OpenAI API key securely
-openai.api_key = os.getenv("sk-P4MhtrIxMbYiw9RVFBBa0imlqTGC9p8KcXy9I5L8u9T3BlbkFJz9A8BOMEPf47JP-c18pZjkEJgZ6DYyGMLbvsDl7L8A")  # Ensure you have set this environment variable
+openai.api_key = os.getenv("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")  # Ensure you have set this environment variable
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
