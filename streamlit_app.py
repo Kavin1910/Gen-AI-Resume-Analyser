@@ -107,7 +107,7 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
             )
 
             # Call OpenAI ChatGPT model using the updated API method
-            response = openai.chat_completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-4",  # Replace with "gpt-3.5-turbo" if needed
                 messages=[
                     {"role": "system", "content": "You are an expert in HR resume analysis."},
@@ -126,7 +126,6 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
         justifications = ["No justification provided"] * num_candidates
 
     return justifications
-
 
 # Streamlit application
 def main():
