@@ -8,7 +8,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
-from transformers import pipeline
+import openai
+import os
+
+# Set your OpenAI API key
+openai.api_key = os.getenv("sk-P4MhtrIxMbYiw9RVFBBa0imlqTGC9p8KcXy9I5L8u9T3BlbkFJz9A8BOMEPf47JP-c18pZjkEJgZ6DYyGMLbvsDl7L8A")  # You can replace with your key for testing
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -87,9 +91,45 @@ def create_pdf_report(candidate_data, num_candidates):
     
     return pdf_output
 
+# Function to generate assessment justification with ChatGPT
+def generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates):
+    justifications = []
+    try:
+        # Iterate through the top candidates
+        for i in range(min(num_candidates, len(ranked_indices))):
+            resume_snippet = resumes[ranked_indices[i]][:500]  # Take a portion of the resume
+            prompt = (
+                f"The following is a job description and a resume snippet. "
+                f"Please provide a concise, two-line justification for why this candidate is a good fit for the job.\n\n"
+                f"Job Description:\n{job_description}\n\n"
+                f"Resume Snippet:\n{resume_snippet}\n\n"
+                f"Justification:"
+            )
+
+            # Call OpenAI ChatGPT model
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",  # You can use "gpt-4" if you have access
+                messages=[
+                    {"role": "system", "content": "You are an expert in HR resume analysis."},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=100,
+                temperature=0.7,
+            )
+            
+            # Extract the generated justification from ChatGPT's response
+            justification = response['choices'][0]['message']['content'].strip()
+            justifications.append(justification)
+
+    except Exception as e:
+        st.error(f"Error generating justifications: {e}")
+        justifications = ["No justification provided"] * num_candidates
+
+    return justifications
+
 # Streamlit application
 def main():
-    st.title("Kavin's AI Resume Analyzer and Ranking")
+    st.title("AI Resume Analyzer and Ranking")
     
     # Upload job description
     job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
@@ -143,10 +183,17 @@ def main():
                         'justification': ''  # Placeholder for justification
                     })
 
+                # Generate justifications using ChatGPT
+                justifications = generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates)
+                
+                # Add justifications to candidate data
+                for i in range(min(num_candidates, len(ranked_indices))):
+                    candidate_data[i]['justification'] = justifications[i]
+                
                 # Debugging output
                 st.write("Debugging Information:")
                 st.write(f"Candidate Data: {candidate_data}")
-                
+
                 # Generate and display charts
                 fig, ax = plt.subplots(figsize=(10, 5))
                 top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
@@ -156,29 +203,6 @@ def main():
                 ax.set_title('Resume Scores')
                 plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
                 st.pyplot(fig)
-                
-                # Generate assessment justification
-                st.write("Assessment Justification:")
-                try:
-                    nlp = pipeline("text-generation", model="gpt2")
-                    justification_prompt = (
-                        f"Generate a 2-line summary of why the following resumes are a good match for the job description:\n\n"
-                        f"Job Description: {job_description}\n\n"
-                        f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
-                    )
-                    justification = nlp(justification_prompt, max_length=150, truncation=True)
-                    summary = justification[0]['generated_text']
-                    lines = summary.split('\n')[:2]
-                    st.markdown("• " + "\n• ".join(lines))
-
-                    # Update candidate data with justification
-                    for i in range(min(num_candidates, len(ranked_indices))):
-                        candidate_data[i]['justification'] = lines[i] if i < len(lines) else 'No justification provided'
-                except Exception as e:
-                    st.error(f"Error generating justification: {e}")
-
-                # Add "Thank You" image        
-                st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
 
                 # Button to download report as PDF
                 if candidate_data:
