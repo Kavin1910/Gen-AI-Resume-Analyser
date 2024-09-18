@@ -12,12 +12,11 @@ import openai
 import os
 
 # Directly set your OpenAI API key
-openai.api_key = "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"  # Replace with your actual API key
+openai.api_key = "sk-OK8DS4e_lJAMjEq8sHIOP_SsOX5Tl_ow1smg04TpA4T3BlbkFJvL8gmfDukHuHuuaZJhwhSqqWVah_eSkBL9dRyx6rYA"  # Replace with your actual API key
 
 # Ensure your API key is correctly set
 if not openai.api_key:
     st.error("OpenAI API key is not set. Please check the API key configuration.")
-
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -204,38 +203,30 @@ def main():
                 st.write(f"Candidate Data: {candidate_data}")
 
                 # Generate and display charts
-fig, ax = plt.subplots(figsize=(10, 5))
-top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
-ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
-ax.set_xlabel('Candidates')
-ax.set_ylabel('Scores (%)')
-ax.set_title('Resume Scores')
+                fig, ax = plt.subplots(figsize=(10, 5))
+                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
+                ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
+                ax.set_xlabel('Candidates')
+                ax.set_ylabel('Scores (%)')
+                ax.set_title('Resume Scores')
 
-# Ensure the number of x-tick labels matches the number of candidates
-candidate_labels = [f"Candidate {i+1}" for i in range(len(top_scores))]
-ax.set_xticks(range(len(candidate_labels)))  # Set x-ticks to match the number of top candidates
-ax.set_xticklabels(candidate_labels, rotation=45)
-st.pyplot(fig)
+                # Ensure the number of x-tick labels matches the number of candidates
+                candidate_labels = [f"Candidate {i+1}" for i in range(len(top_scores))]
+                ax.set_xticks(range(len(candidate_labels)))  # Set x-axis tick positions
+                ax.set_xticklabels(candidate_labels)  # Set tick labels
 
+                st.pyplot(fig)
 
-                # Button to download report as PDF
-                if candidate_data:
-                    pdf_output = create_pdf_report(candidate_data, num_candidates)
-                    st.download_button(
-                        label="Download Report as PDF",
-                        data=pdf_output,
-                        file_name="AI_Resume_Analyzer_Report.pdf",
-                        mime="application/pdf"
-                    )
-                else:
-                    st.write("No candidate data available to generate PDF.")
+                # Generate and download PDF report
+                pdf_output = create_pdf_report(candidate_data, num_candidates)
+                st.download_button(
+                    label="Download PDF Report",
+                    data=pdf_output,
+                    file_name="resume_ranking_report.pdf",
+                    mime="application/pdf"
+                )
             else:
-                st.write("No resumes uploaded.")
-        else:
-            st.write("Please upload resumes.")
-    
-    else:
-        st.write("Please upload a job description.")
+                st.warning("No resumes uploaded.")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
