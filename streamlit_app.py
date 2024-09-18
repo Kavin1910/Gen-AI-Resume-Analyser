@@ -204,14 +204,19 @@ def main():
                 st.write(f"Candidate Data: {candidate_data}")
 
                 # Generate and display charts
-                fig, ax = plt.subplots(figsize=(10, 5))
-                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
-                ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
-                ax.set_xlabel('Candidates')
-                ax.set_ylabel('Scores (%)')
-                ax.set_title('Resume Scores')
-                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
-                st.pyplot(fig)
+fig, ax = plt.subplots(figsize=(10, 5))
+top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
+ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
+ax.set_xlabel('Candidates')
+ax.set_ylabel('Scores (%)')
+ax.set_title('Resume Scores')
+
+# Ensure the number of x-tick labels matches the number of candidates
+candidate_labels = [f"Candidate {i+1}" for i in range(len(top_scores))]
+ax.set_xticks(range(len(candidate_labels)))  # Set x-ticks to match the number of top candidates
+ax.set_xticklabels(candidate_labels, rotation=45)
+st.pyplot(fig)
+
 
                 # Button to download report as PDF
                 if candidate_data:
