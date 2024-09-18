@@ -9,3 +9,4 @@ transformers
 torch
 fpdf
 openai==0.28
+pdfkit
