@@ -120,7 +120,7 @@ def generate_chatgpt_justification(job_description, resumes, ranked_indices, num
 
             # Call OpenAI ChatGPT model using the correct method
             response = openai.ChatCompletion.create(
-                model="gpt-4",  # Ensure you are using the correct model name
+                model="gpt-4o-mini",  # Ensure you are using the correct model name
                 messages=[
                     {"role": "system", "content": "You are an expert in resume analysis."},
                     {"role": "user", "content": prompt},
@@ -180,4 +180,3 @@ def main():
                     
                     # HTML for box-like structure
                     snippet_html = f"""
-                    <div style="border:
