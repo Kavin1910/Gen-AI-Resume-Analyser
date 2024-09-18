@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
-from fpdf import FPDF
+import pdfkit
 import openai
 import os
 
@@ -54,45 +54,49 @@ def rank_candidates(resumes, job_description):
 
 # Function to create a PDF report
 def create_pdf_report(candidate_data, num_candidates):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
+    # Create a HTML template for the report
+    html_template = """
+    <html>
+    <head>
+    <title>AI Resume Analyzer Report</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+    }
+    </style>
+    </head>
+    <body>
+    <h1>AI Resume Analyzer Report</h1>
+    {content}
+    </body>
+    </html>
+    """
 
-    # Title
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(200, 10, txt="AI Resume Analyzer Report", ln=True, align='C')
-
-    # Content
-    pdf.set_font("Arial", size=12)
-    
+    # Generate the content for the report
+    content = ""
     for i in range(min(num_candidates, len(candidate_data))):
-        pdf.ln(10)
-        pdf.cell(200, 10, txt=f"Candidate {i+1}:", ln=True)
-        pdf.cell(200, 10, txt=f"Score: {candidate_data[i]['score']}%", ln=True)
-        
-        # Label the resume snippet section
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 10, txt="Resume Snippet", ln=True)
-        
-        # Resume Snippet content inside a bordered box
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
+        content += f"<h2>Candidate {i+1}</h2>"
+        content += f"<p>Score: {candidate_data[i]['score']}%</p>"
+        content += f"<h3>Resume Snippet</h3>"
+        content += f"<p>{candidate_data[i]['snippet']}</p>"
+        content += f"<h3>Justification</h3>"
+        content += f"<p>{candidate_data[i]['justification']}</p>"
 
-        # Justification (only include if available)
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 10, txt="Justification", ln=True)
-        pdf.set_font("Arial", size=12)
-        
-        justification = candidate_data[i].get('justification', 'No justification provided')
-        pdf.multi_cell(0, 10, txt=justification, border=1)
-    
-    # Save PDF to BytesIO buffer
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'S')  # Save PDF to buffer as string
-    pdf_output.seek(0)
-    
+    # Render the HTML template with the content
+    html_report = html_template.format(content=content)
+
+    # Use pdfkit to generate the PDF report
+    options = {
+        'page-size': 'A4',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+        'encoding': "UTF-8",
+        'no-outline': None
+    }
+    pdf_output = pdfkit.from_string(html_report, False, options=options)
+
     return pdf_output
 
 # Function to generate assessment justification using the OpenAI API
@@ -176,57 +180,4 @@ def main():
                     
                     # HTML for box-like structure
                     snippet_html = f"""
-                    <div style="border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-bottom: 10px;">
-                    <p style="font-size: 14px; font-family: 'Arial', sans-serif;">
-                    {'<br>'.join(f'• {snippet.strip()}' for snippet in snippets[:3])}
-                    </p>
-                    </div>
-                    """
-                    st.markdown(snippet_html, unsafe_allow_html=True)
-
-                    # Save data for PDF report
-                    candidate_data.append({
-                        'score': score,
-                        'snippet': ' '.join(snippets[:3]),
-                        'justification': ''  # Placeholder for justification
-                    })
-
-                # Generate justifications using ChatGPT
-                justifications = generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates)
-                
-                # Add justifications to candidate data
-                for i in range(min(num_candidates, len(ranked_indices))):
-                    candidate_data[i]['justification'] = justifications[i]
-                
-                # Debugging output
-                st.write("Debugging Information:")
-                st.write(f"Candidate Data: {candidate_data}")
-
-                # Generate and display charts
-                fig, ax = plt.subplots(figsize=(10, 5))
-                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
-                ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
-                ax.set_xlabel('Candidates')
-                ax.set_ylabel('Scores (%)')
-                ax.set_title('Resume Scores')
-
-                # Ensure the number of x-tick labels matches the number of candidates
-                candidate_labels = [f"Candidate {i+1}" for i in range(len(top_scores))]
-                ax.set_xticks(range(len(candidate_labels)))  # Set x-axis tick positions
-                ax.set_xticklabels(candidate_labels)  # Set tick labels
-
-                st.pyplot(fig)
-
-                # Generate and download PDF report
-                pdf_output = create_pdf_report(candidate_data, num_candidates)
-                st.download_button(
-                    label="Download PDF Report",
-                    data=pdf_output,
-                    file_name="resume_ranking_report.pdf",
-                    mime="application/pdf"
-                )
-            else:
-                st.warning("No resumes uploaded.")
-
-if __name__ == '__main__':
-    main()
+                    <div style="border:
