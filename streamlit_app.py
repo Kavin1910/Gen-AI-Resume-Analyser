@@ -7,16 +7,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import io
-import pdfkit
-import openai
-import os
-
-# Directly set your OpenAI API key
-openai.api_key = "sk-OK8DS4e_lJAMjEq8sHIOP_SsOX5Tl_ow1smg04TpA4T3BlbkFJvL8gmfDukHuHuuaZJhwhSqqWVah_eSkBL9dRyx6rYA"  # Replace with your actual API key
-
-# Ensure your API key is correctly set
-if not openai.api_key:
-    st.error("OpenAI API key is not set. Please check the API key configuration.")
+from fpdf import FPDF
+from transformers import pipeline
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -54,94 +46,50 @@ def rank_candidates(resumes, job_description):
 
 # Function to create a PDF report
 def create_pdf_report(candidate_data, num_candidates):
-    # Create a HTML template for the report
-    html_template = """
-    <html>
-    <head>
-    <title>AI Resume Analyzer Report</title>
-    <style>
-    body {
-        font-family: Arial, sans-serif;
-    }
-    </style>
-    </head>
-    <body>
-    <h1>AI Resume Analyzer Report</h1>
-    {content}
-    </body>
-    </html>
-    """
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
 
-    # Generate the content for the report
-    content = ""
+    # Title
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, txt="AI Resume Analyzer Report", ln=True, align='C')
+
+    # Content
+    pdf.set_font("Arial", size=12)
+    
     for i in range(min(num_candidates, len(candidate_data))):
-        content += f"<h2>Candidate {i+1}</h2>"
-        content += f"<p>Score: {candidate_data[i]['score']}%</p>"
-        content += f"<h3>Resume Snippet</h3>"
-        content += f"<p>{candidate_data[i]['snippet']}</p>"
-        content += f"<h3>Justification</h3>"
-        content += f"<p>{candidate_data[i]['justification']}</p>"
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Candidate {i+1}:", ln=True)
+        pdf.cell(200, 10, txt=f"Score: {candidate_data[i]['score']}%", ln=True)
+        
+        # Label the resume snippet section
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, txt="Resume Snippet", ln=True)
+        
+        # Resume Snippet content inside a bordered box
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=f"{candidate_data[i]['snippet']}", border=1)
 
-    # Render the HTML template with the content
-    html_report = html_template.format(content=content)
-
-    # Use pdfkit to generate the PDF report
-    options = {
-        'page-size': 'A4',
-        'margin-top': '0.75in',
-        'margin-right': '0.75in',
-        'margin-bottom': '0.75in',
-        'margin-left': '0.75in',
-        'encoding': "UTF-8",
-        'no-outline': None
-    }
-    pdf_output = pdfkit.from_string(html_report, False, options=options)
-
+        # Justification (only include if available)
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(200, 10, txt="Justification", ln=True)
+        pdf.set_font("Arial", size=12)
+        
+        justification = candidate_data[i].get('justification', 'No justification provided')
+        pdf.multi_cell(0, 10, txt=justification, border=1)
+    
+    # Save PDF to BytesIO buffer
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output, 'S')  # Save PDF to buffer as string
+    pdf_output.seek(0)
+    
     return pdf_output
-
-# Function to generate assessment justification using the OpenAI API
-def generate_chatgpt_justification(job_description, resumes, ranked_indices, num_candidates):
-    justifications = []
-    try:
-        # Ensure the API key is correctly set
-        if not openai.api_key:
-            raise ValueError("OpenAI API key is not set.")
-
-        # Iterate through the top candidates
-        for i in range(min(num_candidates, len(ranked_indices))):
-            resume_snippet = resumes[ranked_indices[i]][:500]  # Take a portion of the resume
-            prompt = (
-                f"The following is a job description and a resume snippet. "
-                f"Please provide a concise, two-line justification for why this candidate is a good fit for the job.\n\n"
-                f"Job Description:\n{job_description}\n\n"
-                f"Resume Snippet:\n{resume_snippet}\n\n"
-                f"Justification:"
-            )
-
-            # Call OpenAI ChatGPT model using the correct method
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # Ensure you are using the correct model name
-                messages=[
-                    {"role": "system", "content": "You are an expert in resume analysis."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=1000,
-                temperature=0.7,
-            )
-            
-            # Extract the generated justification from the response
-            justification = response.choices[0].message['content'].strip()
-            justifications.append(justification)
-
-    except Exception as e:
-        st.error(f"Error generating justifications: {e}")
-        justifications = ["No justification provided"] * num_candidates
-
-    return justifications
 
 # Streamlit application
 def main():
-    st.title("AI Resume Analyzer and Ranking")
+    st.title("Kavin's AI Resume Analyzer and Ranking")
     
     # Upload job description
     job_description_file = st.file_uploader("Upload Job Description (Text File)", type="txt")
@@ -180,3 +128,76 @@ def main():
                     
                     # HTML for box-like structure
                     snippet_html = f"""
+                    <div style="border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-bottom: 10px;">
+                    <p style="font-size: 14px; font-family: 'Arial', sans-serif;">
+                    {'<br>'.join(f'• {snippet.strip()}' for snippet in snippets[:3])}
+                    </p>
+                    </div>
+                    """
+                    st.markdown(snippet_html, unsafe_allow_html=True)
+
+                    # Save data for PDF report
+                    candidate_data.append({
+                        'score': score,
+                        'snippet': ' '.join(snippets[:3]),
+                        'justification': ''  # Placeholder for justification
+                    })
+
+                # Debugging output
+                st.write("Debugging Information:")
+                st.write(f"Candidate Data: {candidate_data}")
+                
+                # Generate and display charts
+                fig, ax = plt.subplots(figsize=(10, 5))
+                top_scores = [scores[idx] for idx in ranked_indices[:num_candidates]]
+                ax.bar(range(len(top_scores)), [score * 100 for score in top_scores], color='blue')
+                ax.set_xlabel('Candidates')
+                ax.set_ylabel('Scores (%)')
+                ax.set_title('Resume Scores')
+                plt.xticks(range(len(top_scores)), [f"Candidate {i+1}" for i in range(num_candidates)], rotation=45)
+                st.pyplot(fig)
+                
+                # Generate assessment justification
+                st.write("Assessment Justification:")
+                try:
+                    nlp = pipeline("text-generation", model="gpt2")
+                    justification_prompt = (
+                        f"Generate a 2-line summary of why the following resumes are a good match for the job description:\n\n"
+                        f"Job Description: {job_description}\n\n"
+                        f"Resumes: {', '.join([resumes[idx][:500] for idx in ranked_indices[:num_candidates]])}"
+                    )
+                    justification = nlp(justification_prompt, max_length=150, truncation=True)
+                    summary = justification[0]['generated_text']
+                    lines = summary.split('\n')[:2]
+                    st.markdown("• " + "\n• ".join(lines))
+
+                    # Update candidate data with justification
+                    for i in range(min(num_candidates, len(ranked_indices))):
+                        candidate_data[i]['justification'] = lines[i] if i < len(lines) else 'No justification provided'
+                except Exception as e:
+                    st.error(f"Error generating justification: {e}")
+
+                # Add "Thank You" image        
+                st.image("https://images.pexels.com/photos/1887992/pexels-photo-1887992.jpeg?auto=compress&cs=tinysrgb&w=600")
+
+                # Button to download report as PDF
+                if candidate_data:
+                    pdf_output = create_pdf_report(candidate_data, num_candidates)
+                    st.download_button(
+                        label="Download Report as PDF",
+                        data=pdf_output,
+                        file_name="AI_Resume_Analyzer_Report.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.write("No candidate data available to generate PDF.")
+            else:
+                st.write("No resumes uploaded.")
+        else:
+            st.write("Please upload resumes.")
+    
+    else:
+        st.write("Please upload a job description.")
+
+if __name__ == "__main__":
+    main()
